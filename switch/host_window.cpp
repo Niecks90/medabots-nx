@@ -33,6 +33,8 @@
 #if defined(GBARECOMP_HAVE_SDL2)
 
 #include <SDL.h>
+#include "runtime_bus_bridge.h"
+#include "gba_bus.h"
 
 #if defined(GBARECOMP_RUNTIME_UI)
 #include "imgui.h"
@@ -1410,23 +1412,6 @@ void render_host_layers(Backend* b) {
     SDL_SetRenderDrawBlendMode(b->renderer, SDL_BLENDMODE_NONE);
 }
 
-static std::uint8_t fps_glyph(char c, int row) {
-    static constexpr std::uint8_t glyphs[][5] = {
-        {0x1E, 0x11, 0x11, 0x11, 0x1E},
-        {0x04, 0x0C, 0x04, 0x04, 0x0E},
-        {0x1E, 0x01, 0x1E, 0x10, 0x1F},
-        {0x1E, 0x01, 0x0E, 0x01, 0x1E},
-        {0x12, 0x12, 0x1F, 0x02, 0x02},
-        {0x1F, 0x10, 0x1E, 0x01, 0x1E},
-        {0x0E, 0x10, 0x1E, 0x11, 0x0E},
-        {0x1F, 0x01, 0x02, 0x04, 0x04},
-        {0x0E, 0x11, 0x0E, 0x11, 0x0E},
-        {0x0E, 0x11, 0x1F, 0x01, 0x0E},
-    };
-    if (row < 0 || row >= 5) return 0;
-    if (c >= '0' && c <= '9') return glyphs[c - '0'][row];
-    return 0;
-}
 
 #if defined(__SWITCH__)
 constexpr Uint32 kStreamTextureFormat = SDL_PIXELFORMAT_ABGR8888;
@@ -1493,48 +1478,109 @@ static void upload_rgb24_texture(Backend* b,
 }
 #endif
 
+static uint8_t fps_font_bits(char c, int row) {
+    if (row < 0 || row >= 7) return 0;
+    switch (c) {
+        case '0': { static constexpr uint8_t r[7] = {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}; return r[row]; }
+        case '1': { static constexpr uint8_t r[7] = {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E}; return r[row]; }
+        case '2': { static constexpr uint8_t r[7] = {0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F}; return r[row]; }
+        case '3': { static constexpr uint8_t r[7] = {0x1E, 0x01, 0x01, 0x0E, 0x01, 0x01, 0x1E}; return r[row]; }
+        case '4': { static constexpr uint8_t r[7] = {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02}; return r[row]; }
+        case '5': { static constexpr uint8_t r[7] = {0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E}; return r[row]; }
+        case '6': { static constexpr uint8_t r[7] = {0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E}; return r[row]; }
+        case '7': { static constexpr uint8_t r[7] = {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08}; return r[row]; }
+        case '8': { static constexpr uint8_t r[7] = {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E}; return r[row]; }
+        case '9': { static constexpr uint8_t r[7] = {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C}; return r[row]; }
+        case '.': { static constexpr uint8_t r[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C}; return r[row]; }
+        case 'F': { static constexpr uint8_t r[7] = {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10}; return r[row]; }
+        case 'P': { static constexpr uint8_t r[7] = {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10}; return r[row]; }
+        case 'S': { static constexpr uint8_t r[7] = {0x0E, 0x11, 0x10, 0x0E, 0x01, 0x11, 0x0E}; return r[row]; }
+        default: return 0;
+    }
+}
+
 static void draw_fps_overlay(Backend* b, const PresentationLayout& layout) {
-    if (!b->fps_readout || b->fps_value <= 0.0 || layout.width <= 0 ||
-        layout.height <= 0) return;
+    (void)layout;
+    if (!b->fps_readout || b->fps_value <= 0.0) return;
+
+    // Reset logical size so we draw in true screen pixels (1280x720 / 1920x1080)
+    int logical_w = 0;
+    int logical_h = 0;
+    SDL_Rect prev_vp{};
+    SDL_RenderGetLogicalSize(b->renderer, &logical_w, &logical_h);
+    SDL_RenderGetViewport(b->renderer, &prev_vp);
+    SDL_RenderSetLogicalSize(b->renderer, 0, 0);
+    SDL_RenderSetViewport(b->renderer, nullptr);
+
+    int screen_w = 1280;
+    int screen_h = 720;
+    if (SDL_GetRendererOutputSize(b->renderer, &screen_w, &screen_h) != 0 || screen_w <= 0) {
+        SDL_GetWindowSize(b->window, &screen_w, &screen_h);
+    }
+
     char text[32];
-    std::snprintf(text, sizeof(text), "%.1f", b->fps_value);
-    const int scale = std::max(2, layout.width / 240);
-    const int cell = 4 * scale;
-    const int x0 = layout.x + 4 * scale;
-    const int y0 = layout.y + 4 * scale;
-    int chars = 0;
-    for (const char* p = text; *p; ++p)
-        if (*p != '.') ++chars;
+    std::snprintf(text, sizeof(text), "%.1f FPS", b->fps_value);
+
+    // Discrete, crisp scale: 2 in handheld/docked for a compact corner pill
+    const int scale = 2;
+    const int char_h = 7 * scale;
+    const int char_adv = 6 * scale; // 12 px advance for 10 px glyphs (2 px gap)
+
+    int text_len = 0;
+    for (const char* p = text; *p; ++p) ++text_len;
+    const int text_w = text_len * char_adv;
+
+    const int pad_x = 7 * scale;
+    const int pad_y = 4 * scale;
+    const int box_w = text_w + pad_x * 2;
+    const int box_h = char_h + pad_y * 2;
+
+    // Corner placement: top-right corner of entire display with 20 px margin
+    const int box_x = screen_w - box_w - 20;
+    const int box_y = 16;
+
     SDL_SetRenderDrawBlendMode(b->renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(b->renderer, 0, 0, 0, 180);
-    SDL_Rect bg{x0 - scale, y0 - scale, chars * cell + 2 * scale, 7 * scale};
-    SDL_RenderFillRect(b->renderer, &bg);
-    SDL_SetRenderDrawColor(b->renderer, 255, 255, 255, 255);
-    int x = x0;
+
+    // Pill background
+    SDL_SetRenderDrawColor(b->renderer, 15, 20, 30, 215);
+    SDL_Rect bg_rect{box_x, box_y, box_w, box_h};
+    SDL_RenderFillRect(b->renderer, &bg_rect);
+
+    // Pill border
+    SDL_SetRenderDrawColor(b->renderer, 70, 95, 130, 230);
+    SDL_RenderDrawRect(b->renderer, &bg_rect);
+
+    // Text color: soft green for >= 58.5 FPS, amber for dips, coral for low
+    SDL_Color fg_col;
+    if (b->fps_value >= 58.5) {
+        fg_col = {110, 240, 120, 255};
+    } else if (b->fps_value >= 54.0) {
+        fg_col = {250, 220, 90, 255};
+    } else {
+        fg_col = {250, 100, 100, 255};
+    }
+    SDL_SetRenderDrawColor(b->renderer, fg_col.r, fg_col.g, fg_col.b, fg_col.a);
+
+    int cur_x = box_x + pad_x;
+    int cur_y = box_y + pad_y;
+
     for (const char* p = text; *p; ++p) {
-        if (*p == '.') {
-            SDL_Rect dot{x, y0 + 4 * scale, scale, scale};
-            SDL_RenderFillRect(b->renderer, &dot);
-            x += scale;
-            continue;
-        }
-        for (int row = 0; row < 5; ++row) {
-            const std::uint8_t bits = fps_glyph(*p, row);
-            int col = 0;
-            while (col < 5) {
-                if (!(bits & (1u << (4 - col)))) {
-                    ++col;
-                    continue;
+        for (int r = 0; r < 7; ++r) {
+            uint8_t bits = fps_font_bits(*p, r);
+            for (int c = 0; c < 5; ++c) {
+                if (bits & (1u << (4 - c))) {
+                    SDL_Rect pixel{cur_x + c * scale, cur_y + r * scale, scale, scale};
+                    SDL_RenderFillRect(b->renderer, &pixel);
                 }
-                const int start = col;
-                while (col < 5 && (bits & (1u << (4 - col)))) ++col;
-                SDL_Rect run{x + start * scale, y0 + row * scale,
-                             (col - start) * scale, scale};
-                SDL_RenderFillRect(b->renderer, &run);
             }
         }
-        x += cell;
+        cur_x += char_adv;
     }
+
+    // Restore previous logical size and viewport
+    SDL_RenderSetLogicalSize(b->renderer, logical_w, logical_h);
+    SDL_RenderSetViewport(b->renderer, &prev_vp);
+    SDL_SetRenderDrawBlendMode(b->renderer, SDL_BLENDMODE_NONE);
 }
 
 // The presentation rectangle every present path uses, so touch mapping and
@@ -1921,11 +1967,7 @@ bool HostWindow::open(int scale, int base_w, int base_h, const char* title,
         vsync_env && *vsync_env && *vsync_env != '0';
     const bool vsync_disabled =
         no_vsync_env && *no_vsync_env && *no_vsync_env != '0';
-#if defined(__SWITCH__)
-    const bool want_vsync = false; // Ne jamais bloquer Core 1 sur le scanout HDMI
-#else
     const bool want_vsync = vsync_requested && !vsync_disabled;
-#endif
     const Uint32 renderer_flags = SDL_RENDERER_ACCELERATED |
         (want_vsync ? static_cast<Uint32>(SDL_RENDERER_PRESENTVSYNC)
                     : Uint32{0});
@@ -2098,6 +2140,12 @@ bool HostWindow::open(int scale, int base_w, int base_h, const char* title,
     impl_ = b;
     open_ = true;
     g_haptic_window = this;
+
+    const char* fps_env = std::getenv("GBARECOMP_SHOW_FPS");
+    if (fps_env && *fps_env && *fps_env != '0') {
+        b->fps_readout = true;
+    }
+
     return true;
 }
 
@@ -2123,6 +2171,27 @@ void HostWindow::push_audio_samples(const int16_t* samples, std::size_t count) {
             b->volume_buf[i] = static_cast<int16_t>(
                 (static_cast<int32_t>(samples[i]) * v) / 100);
         samples = b->volume_buf.data();
+    }
+
+    // Dynamic rate protection: GBA mixer generates at 32768 Hz when SOUNDBIAS resolution=0.
+    // Host audio device & bridge expect 65536 Hz. Upsample 2x with linear interpolation if 32768 Hz.
+    std::vector<int16_t> upsampled;
+    uint32_t current_rate = 65536;
+    if (auto* bus = gbarecomp::active_bus()) {
+        current_rate = bus->audio().sample_rate();
+    } else if (count <= 700) {
+        current_rate = 32768;
+    }
+    if (current_rate == 32768) {
+        upsampled.resize(count * 2);
+        for (std::size_t i = 0; i < count; ++i) {
+            int16_t s0 = samples[i];
+            int16_t s1 = (i + 1 < count) ? samples[i + 1] : s0;
+            upsampled[i * 2] = s0;
+            upsampled[i * 2 + 1] = static_cast<int16_t>((static_cast<int32_t>(s0) + s1) / 2);
+        }
+        samples = upsampled.data();
+        count *= 2;
     }
 
     if (b->audio_direct) {
@@ -3260,9 +3329,17 @@ HostWindow::Events HostWindow::pump() {
             SDL_GameControllerGetButton(b->controller, SDL_CONTROLLER_BUTTON_BACK)) {
             ev.quit = true;
         }
+
+        // Right Stick click (R3) toggles FPS counter on/off
+        static bool rstick_was_down = false;
+        const bool rstick_down = SDL_GameControllerGetButton(b->controller, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+        if (rstick_down && !rstick_was_down) {
+            b->fps_readout = !b->fps_readout;
+        }
+        rstick_was_down = rstick_down;
     }
 #endif
-ev.keyinput = keys;
+    ev.keyinput = keys;
 #if defined(GBARECOMP_RUNTIME_UI)
     if (b->runtime_ui && recomp_runtime_ui_is_open(b->runtime_ui))
         ev.keyinput = 0x03FFu;

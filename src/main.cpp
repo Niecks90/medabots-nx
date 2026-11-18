@@ -5,8 +5,7 @@
 #include <algorithm>
 
 #include "runtime.h"
-#include "mksc_extended_view.h"
-#include "mksc_flash_dispatch.h"
+#include "sha1.h"
 #if defined(GBAGAME_NETPLAY)
 #include "multiplayer_launch.h"
 #include "gba_netplay_build_identity.h"
@@ -15,8 +14,6 @@
 #if defined(GBAGAME_RECOMP_UI)
 #include "game_launcher_boot.h"
 #endif
-
-
 
 #if defined(__SWITCH__)
 #include <SDL.h>
@@ -31,25 +28,15 @@
 #include <exception>
 
 void log_boot(const char* fmt, ...) {
-    FILE* f = fopen("sdmc:/switch/mksc_nx/boot.log", "a");
-    if (f) {
-        va_list args, args_copy;
-        va_start(args, fmt);
-        va_copy(args_copy, args);
-        vfprintf(f, fmt, args);
-        vprintf(fmt, args_copy);
-        va_end(args_copy);
-        va_end(args);
-        fflush(f);
-        fclose(f);
-    }
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stdout, fmt, args);
+    va_end(args);
+    fflush(stdout);
 }
 
 extern "C" const uint32_t kDispatchTableLen;
-extern "C" int gba_mod_set_adaptive_view_enabled(int);
-extern "C" int gba_mod_set_60fps_track_enabled(int);
 extern "C" bool g_config_audio = true;
-extern "C" void gba_mod_set_adaptive_view_user_config(int enabled);
 bool g_config_show_fps = false;
 
 struct GameThreadArgs {
@@ -90,26 +77,52 @@ int main(int argc, char** argv) {
     });
 
     mkdir("sdmc:/switch", 0777);
-    mkdir("sdmc:/switch/mksc_nx", 0777);
-    mkdir("sdmc:/switch/mksc_nx/save", 0777);
-    chdir("sdmc:/switch/mksc_nx");
+    mkdir("sdmc:/switch/medabots_nx", 0777);
+    mkdir("sdmc:/switch/medabots_nx/save", 0777);
+    chdir("sdmc:/switch/medabots_nx");
+
+    // Migrate any stray save files to sdmc:/switch/medabots_nx/save/rom.sav
+    {
+        FILE* cur_sav = fopen("sdmc:/switch/medabots_nx/save/rom.sav", "rb");
+        if (cur_sav) {
+            fclose(cur_sav);
+        } else {
+            // Check for sdmc:/switch/medabots_nx/rom.sav
+            FILE* src_sav = fopen("sdmc:/switch/medabots_nx/rom.sav", "rb");
+            if (!src_sav) src_sav = fopen("sdmc:/switch/medabots_nx/save/medabots_rokusho.sav", "rb");
+            if (src_sav) {
+                FILE* dst_sav = fopen("sdmc:/switch/medabots_nx/save/rom.sav", "wb");
+                if (dst_sav) {
+                    char chunk[4096];
+                    size_t n;
+                    while ((n = fread(chunk, 1, sizeof(chunk), src_sav)) > 0) {
+                        fwrite(chunk, 1, n, dst_sav);
+                    }
+                    fclose(dst_sav);
+                }
+                fclose(src_sav);
+                unlink("sdmc:/switch/medabots_nx/rom.sav");
+            }
+        }
+    }
+
+    freopen("sdmc:/switch/medabots_nx/boot.log", "w", stdout);
+    freopen("sdmc:/switch/medabots_nx/boot.log", "a", stderr);
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
+
+    std::printf("--- Medabots Rokusho NX Boot Log ---\n");
+    std::fflush(stdout);
+
     setenv("GBARECOMP_BIOS_HLE", "1", 1);
     setenv("GBARECOMP_DIAGNOSTICS", "0", 1);
-    // On Switch, calling present() with SDL_RENDERER_PRESENTVSYNC on the
-    // emulation thread (Core 1) causes SDL_RenderPresent to block up to
-    // 16.67 ms/frame waiting for scanout, starving the GBA emulation loop and
-    // reducing frame rate to <= 30 FPS. Setting GBARECOMP_NO_VSYNC=1 ensures
-    // SDL_RenderPresent returns immediately, pacing smoothly at 60 FPS via audio.
+    setenv("GBARECOMP_LANGUAGE", "0", 1);
+    // On Switch, default want_vsync = false to avoid blocking Core 1 on HDMI scanout
     setenv("GBARECOMP_NO_VSYNC", "1", 1);
     unsetenv("GBARECOMP_VSYNC");
 
-    FILE* log_f = fopen("sdmc:/switch/mksc_nx/boot.log", "w");
-    if (log_f) {
-        fprintf(log_f, "--- MKSC NX Boot Log ---\n");
-        fclose(log_f);
-    }
-
-    log_boot("Verified directories.\n");
+    const bool romfs_mounted = R_SUCCEEDED(romfsInit());
+    log_boot("Verified directories (RomFS: %s).\n", romfs_mounted ? "mounted" : "unavailable");
 
     SDL_LogSetOutputFunction([](void* userdata, int category, SDL_LogPriority priority, const char* message) {
         log_boot("[SDL] (%d) %s\n", priority, message);
@@ -117,52 +130,146 @@ int main(int argc, char** argv) {
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
-    FILE* rom = fopen("sdmc:/switch/mksc_nx/rom.gba", "rb");
-    if (rom) {
-        fseek(rom, 0, SEEK_END);
-        long size = ftell(rom);
-        fclose(rom);
-        log_boot("Found rom.gba: %ld bytes.\n", size);
-    } else {
-        log_boot("ERROR: Missing sdmc:/switch/mksc_nx/rom.gba!\n");
-        printf("ERROR: Missing rom.gba!\n");
-        svcSleepThread(5000000000ULL);
+    constexpr const char* kTargetSha1 = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
+
+    auto compute_sha1 = [](const std::string& path, size_t* out_size) -> std::string {
+        FILE* f = fopen(path.c_str(), "rb");
+        if (!f) return {};
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        if (sz <= 0) { fclose(f); return {}; }
+        if (out_size) *out_size = static_cast<size_t>(sz);
+        fseek(f, 0, SEEK_SET);
+        std::vector<uint8_t> buf(static_cast<size_t>(sz));
+        size_t n = fread(buf.data(), 1, buf.size(), f);
+        fclose(f);
+        if (n != buf.size()) return {};
+        return gba::sha1(buf.data(), buf.size()).hex();
+    };
+
+    static std::string selected_rom_path;
+
+    // 1. Inspect sdmc:/switch/medabots_nx/rom.gba
+    size_t sdmc_sz = 0;
+    std::string sdmc_sha1 = compute_sha1("sdmc:/switch/medabots_nx/rom.gba", &sdmc_sz);
+    if (!sdmc_sha1.empty()) {
+        log_boot("Found sdmc:/switch/medabots_nx/rom.gba: %zu bytes, SHA-1=%s\n", sdmc_sz, sdmc_sha1.c_str());
+        if (sdmc_sha1 == kTargetSha1) {
+            selected_rom_path = "sdmc:/switch/medabots_nx/rom.gba";
+            log_boot("Target retail ROM validated on SDMC.\n");
+        } else {
+            log_boot("NOTICE: sdmc:/switch/medabots_nx/rom.gba does not match clean ROM, checking RomFS...\n");
+        }
+    }
+
+    // 2. Fall back to embedded RomFS ROM if SDMC didn't have the clean ROM
+    if (selected_rom_path.empty() && romfs_mounted) {
+        size_t romfs_sz = 0;
+        std::string romfs_sha1 = compute_sha1("romfs:/rom.gba", &romfs_sz);
+        if (!romfs_sha1.empty()) {
+            log_boot("Found romfs:/rom.gba: %zu bytes, SHA-1=%s\n", romfs_sz, romfs_sha1.c_str());
+            if (romfs_sha1 == kTargetSha1) {
+                selected_rom_path = "romfs:/rom.gba";
+                log_boot("Using clean retail ROM from romfs:/rom.gba.\n");
+
+                // Update SDMC with clean ROM from RomFS
+                FILE* src = fopen("romfs:/rom.gba", "rb");
+                FILE* dst = fopen("sdmc:/switch/medabots_nx/rom.gba", "wb");
+                if (src && dst) {
+                    char chunk[65536];
+                    size_t read_bytes;
+                    while ((read_bytes = fread(chunk, 1, sizeof(chunk), src)) > 0) {
+                        fwrite(chunk, 1, read_bytes, dst);
+                    }
+                    log_boot("Updated sdmc:/switch/medabots_nx/rom.gba with clean ROM from RomFS.\n");
+                    selected_rom_path = "sdmc:/switch/medabots_nx/rom.gba";
+                }
+                if (src) fclose(src);
+                if (dst) fclose(dst);
+            }
+        }
+    }
+
+    if (selected_rom_path.empty()) {
+        log_boot("FATAL: No clean Medabots ROM found!\n");
+        consoleInit(NULL);
+        printf("\x1b[1;31m====================================================\x1b[0m\n");
+        printf("\x1b[1;37m        Medabots: Rokusho NX - Boot Error           \x1b[0m\n");
+        printf("\x1b[1;31m====================================================\x1b[0m\n\n");
+        printf("ROM SHA-1 mismatch or file missing!\n\n");
+        printf("Expected: %s\n", kTargetSha1);
+        printf("Size:     8,388,608 bytes (Medabots: Rokusho)\n\n");
+        printf("Please place 'rom.gba' in 'sdmc:/switch/medabots_nx/'.\n\n");
+        printf("Press PLUS (+) or B to return to Homebrew Menu.\n");
+        consoleUpdate(NULL);
+
+        PadState pad;
+        padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+        padInitializeDefault(&pad);
+        u64 start_tick = armGetSystemTick();
+        u64 timeout = armGetSystemTickFreq() * 15;
+        while (appletMainLoop()) {
+            padUpdate(&pad);
+            u64 kDown = padGetButtonsDown(&pad);
+            if (kDown & (HidNpadButton_Plus | HidNpadButton_B)) break;
+            if (armGetSystemTick() - start_tick > timeout) break;
+            svcSleepThread(50000000ULL);
+        }
+        consoleExit(NULL);
         return 1;
     }
 
-    FILE* bios = fopen("sdmc:/switch/mksc_nx/gba_bios.bin", "rb");
+    FILE* bios = fopen("sdmc:/switch/medabots_nx/gba_bios.bin", "rb");
     if (bios) {
         fseek(bios, 0, SEEK_END);
         long size = ftell(bios);
         fclose(bios);
         log_boot("Found gba_bios.bin: %ld bytes.\n", size);
     } else {
-        log_boot("ERROR: Missing sdmc:/switch/mksc_nx/gba_bios.bin!\n");
-        printf("ERROR: Missing gba_bios.bin!\n");
-        svcSleepThread(5000000000ULL);
+        log_boot("ERROR: Missing sdmc:/switch/medabots_nx/gba_bios.bin!\n");
+        consoleInit(NULL);
+        printf("\x1b[1;31m====================================================\x1b[0m\n");
+        printf("\x1b[1;37m        Medabots: Rokusho NX - Boot Error           \x1b[0m\n");
+        printf("\x1b[1;31m====================================================\x1b[0m\n\n");
+        printf("Missing GBA BIOS file!\n\n");
+        printf("Please place 'gba_bios.bin' (16,384 bytes) in:\n");
+        printf("'sdmc:/switch/medabots_nx/gba_bios.bin'\n\n");
+        printf("Press PLUS (+) or B to return to Homebrew Menu.\n");
+        consoleUpdate(NULL);
+
+        PadState pad;
+        padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+        padInitializeDefault(&pad);
+        u64 start_tick = armGetSystemTick();
+        u64 timeout = armGetSystemTickFreq() * 15;
+        while (appletMainLoop()) {
+            padUpdate(&pad);
+            u64 kDown = padGetButtonsDown(&pad);
+            if (kDown & (HidNpadButton_Plus | HidNpadButton_B)) break;
+            if (armGetSystemTick() - start_tick > timeout) break;
+            svcSleepThread(50000000ULL);
+        }
+        consoleExit(NULL);
         return 1;
     }
 
     log_boot("kDispatchTableLen = %u\n", kDispatchTableLen);
 
-    bool config_widescreen = true;
-    bool config_fps60 = true;
     bool config_linear_filter = false;
-    bool config_high_res_affine = false;
     bool config_vsync = false;
     bool config_uncapped = false;
-    int config_cpu_boost = 0; // 0 = Normal (1020 MHz CPU, full GPU 307/768 MHz), 1 = FastLoad (1785 MHz CPU, min GPU), 2 = Type2 (1020 MHz CPU, min GPU)
+    int config_cpu_boost = 0;
     g_config_show_fps = false;
 
     std::string config_paths[] = {
-        "sdmc:/switch/mksc_nx/config.txt",
-        "sdmc:/switch/mksc-nx/config.txt",
+        "sdmc:/switch/medabots_nx/config.txt",
         "./config.txt"
     };
 
     std::string loaded_config_path;
     std::ifstream config_file;
     for (const auto& path : config_paths) {
+        config_file.clear();
         config_file.open(path);
         if (config_file.is_open()) {
             loaded_config_path = path;
@@ -174,10 +281,8 @@ int main(int argc, char** argv) {
         log_boot("Loaded config from %s\n", loaded_config_path.c_str());
         std::string line;
         while (std::getline(config_file, line)) {
-            // Ignorer les lignes vides et les commentaires
             size_t first = line.find_first_not_of(" \t\r\n");
             if (first == std::string::npos || line[first] == '#' || line[first] == ';') continue;
-            // Strip whitespace
             line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
 
             auto eq = line.find('=');
@@ -189,19 +294,9 @@ int main(int argc, char** argv) {
                 const bool is_true = (val == "1" || val == "true" || val == "on" || val == "yes");
                 const bool is_false = (val == "0" || val == "false" || val == "off" || val == "no");
 
-                if (key == "widescreen") {
-                    if (is_true) config_widescreen = true;
-                    else if (is_false) config_widescreen = false;
-                } else if (key == "fps60" || key == "60fps" || key == "fps_60" || key == "60_fps" ||
-                           key == "track_60fps" || key == "track60fps" || key == "track_fps60") {
-                    if (is_true) config_fps60 = true;
-                    else if (is_false) config_fps60 = false;
-                } else if (key == "linear_filter" || key == "linearfilter") {
+                if (key == "linear_filter" || key == "linearfilter") {
                     if (is_true) config_linear_filter = true;
                     else if (is_false) config_linear_filter = false;
-                } else if (key == "high_res_affine" || key == "highresaffine") {
-                    if (is_true) config_high_res_affine = true;
-                    else if (is_false) config_high_res_affine = false;
                 } else if (key == "show_fps" || key == "showfps") {
                     if (is_true) g_config_show_fps = true;
                     else if (is_false) g_config_show_fps = false;
@@ -216,18 +311,22 @@ int main(int argc, char** argv) {
                 } else if (key == "audio") {
                     if (is_true) g_config_audio = true;
                     else if (is_false) g_config_audio = false;
+                } else if (key == "language" || key == "lang") {
+                    if (val == "fr" || val == "french" || val == "francais" || val == "1") {
+                        setenv("GBARECOMP_LANGUAGE", "1", 1);
+                    } else {
+                        setenv("GBARECOMP_LANGUAGE", "0", 1);
+                    }
                 }
             }
         }
     } else {
-        log_boot("Config not found, creating default at sdmc:/switch/mksc_nx/config.txt\n");
-        std::ofstream new_config("sdmc:/switch/mksc_nx/config.txt");
-        new_config << "widescreen = 1\n";
-        new_config << "fps60 = 1\n";
+        log_boot("Config not found, creating default at sdmc:/switch/medabots_nx/config.txt\n");
+        std::ofstream new_config("sdmc:/switch/medabots_nx/config.txt");
+        new_config << "language = en\n";
         new_config << "vsync = 0\n";
         new_config << "uncapped = 0\n";
         new_config << "cpu_boost = 0\n";
-        new_config << "high_res_affine = 0\n";
         new_config << "linear_filter = 0\n";
         new_config << "show_fps = 0\n";
         new_config << "audio = 1\n";
@@ -244,88 +343,73 @@ int main(int argc, char** argv) {
         setenv("GBARECOMP_NO_VSYNC", "1", 1);
         unsetenv("GBARECOMP_VSYNC");
     }
-    log_boot("Config: widescreen=%d, fps60=%d, vsync=%d, uncapped=%d, cpu_boost=%d, high_res_affine=%d, linear_filter=%d, show_fps=%d\n",
-             config_widescreen, config_fps60, config_vsync, config_uncapped, config_cpu_boost, config_high_res_affine, config_linear_filter, g_config_show_fps);
+    if (g_config_show_fps) {
+        setenv("GBARECOMP_SHOW_FPS", "1", 1);
+    } else {
+        setenv("GBARECOMP_SHOW_FPS", "0", 1);
+    }
+
+    log_boot("Config: language=%s, vsync=%d, uncapped=%d, cpu_boost=%d, linear_filter=%d, show_fps=%d\n",
+             std::getenv("GBARECOMP_LANGUAGE") ? std::getenv("GBARECOMP_LANGUAGE") : "0",
+             config_vsync, config_uncapped, config_cpu_boost, config_linear_filter, g_config_show_fps);
 #endif
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--version") == 0) {
-            std::printf("MarioKartSuperCircuitRecomp v%s\n", MKSC_VERSION);
+            std::printf("MedabotsRokushoRecomp v%s\n", MEDABOTS_VERSION);
             return 0;
         }
         if (std::strcmp(argv[i], "--help") == 0 ||
             std::strcmp(argv[i], "-h") == 0) {
             std::printf(
-                "MarioKartSuperCircuitRecomp [--bios <path>] [--rom <path>] [game.toml]\n");
+                "MedabotsRokushoRecomp [--bios <path>] [--rom <path>] [game.toml]\n");
             return 0;
         }
     }
-    g_runtime_ram_dispatch_hook = &mksc::flash_stack_dispatch;
+
     gbarecomp::RunOptions opts;
     std::vector<std::string> args(argv, argv + argc);
 
 #if defined(__SWITCH__)
-    // Enforce Paths and Options for Switch
-
-
-    opts.launcher_save_path = "sdmc:/switch/mksc_nx/save/mario_kart_super_circuit_usa.sav";
+    opts.launcher_save_path = "sdmc:/switch/medabots_nx/save/rom.sav";
 #endif
 
 #if defined(GBAGAME_NETPLAY) && !defined(__SWITCH__)
-    opts.netplay=gbarecomp::make_gba_netplay_launch("mksc-usa",GBARECOMP_NETPLAY_BUILD_ID,
-        "aadc8b9f3c947ff6f610b6c8d7fddaaa9bea98b4bd43576df84f26c457ae1f90");
-    opts.netplay->view_policy = {true, true, mksc::install_extended_view,
-        nullptr, mksc::reset_extended_view};
-    opts.netplay->view_policy.high_resolution_affine_provider = &mksc::high_resolution_affine_provider;
-    try { gbarecomp::parse_gba_netplay_arguments(args,*opts.netplay); }
-    catch (const std::exception& e) { std::fprintf(stderr,"netplay: %s\n",e.what()); return 1; }
+    opts.netplay = gbarecomp::make_gba_netplay_launch("medabots-rokusho", GBARECOMP_NETPLAY_BUILD_ID,
+        "c3c76413274f3d2d573db244ae38909202421d68");
+    try { gbarecomp::parse_gba_netplay_arguments(args, *opts.netplay); }
+    catch (const std::exception& e) { std::fprintf(stderr, "netplay: %s\n", e.what()); return 1; }
 #endif
-    opts.builtin_game_name = "Mario Kart: Super Circuit (USA)";
-    opts.builtin_rom_sha1 = "9d327c030c3e2d9007990518594f70c3340ac56f";
-    opts.builtin_rom_crc32 = 0xED316E37u;
-    opts.mod_game_id = "mario-kart-super-circuit-us";
-    opts.mod_owns_adaptive_view = true;
-#if defined(__SWITCH__)
-    opts.high_resolution_affine_provider = config_high_res_affine ? &mksc::high_resolution_affine_provider : nullptr;
-    if (config_widescreen) {
-        opts.max_view_width = 480;
-        opts.max_resize_view_width = 480;
-        opts.resize_driven_view = true;
-        opts.extended_view_init = &mksc::install_extended_view;
-    } else {
-        opts.max_view_width = 240;
-        opts.max_resize_view_width = 240;
-        opts.resize_driven_view = false;
-        opts.extended_view_init = nullptr;
-    }
-#else
-    opts.high_resolution_affine_provider = &mksc::high_resolution_affine_provider;
-    opts.max_view_width = 480;
-    opts.max_resize_view_width = 480;
-    opts.resize_driven_view = true;
-    opts.extended_view_init = &mksc::install_extended_view;
-#endif
-    // Zero retains existing mod selections when upgrading an older config.
-    // Explicit Display modes override the optional view mod for this run.
-    static const char* const view_labels[] = {"Default (Mods)", "Native (3:2)", "16:9"};
-    static const uint16_t view_widths[] = {0, 240, 284};
+
+    opts.builtin_game_name = "Medabots: Rokusho";
+    opts.builtin_rom_sha1 = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
+    opts.builtin_rom_crc32 = 0xe144ded2u;
+    opts.mod_game_id = "medabots-rokusho";
+    opts.mod_owns_adaptive_view = false;
+
+    // Clean native 4:3 (240x160) presentation
+    opts.max_view_width = 240;
+    opts.max_resize_view_width = 240;
+    opts.resize_driven_view = false;
+    opts.extended_view_init = nullptr;
+    opts.high_resolution_affine_provider = nullptr;
+
+    static const char* const view_labels[] = {"Native (4:3)"};
+    static const uint16_t view_widths[] = {240};
     opts.launcher_aspect_labels = view_labels;
     opts.launcher_aspect_view_widths = view_widths;
-    opts.launcher_num_aspects = 3;
-    opts.launcher_expose_widescreen = true;
-    opts.launcher_expose_adaptive_view = true;
+    opts.launcher_num_aspects = 1;
+    opts.launcher_expose_widescreen = false;
+    opts.launcher_expose_adaptive_view = false;
     opts.launcher_expose_sharp_filter = true;
     opts.launcher_default_sharp_filter = true;
-    opts.launcher_expose_affine_filter = true;
-    opts.launcher_default_affine_filter = true;
+    opts.launcher_expose_affine_filter = false;
+    opts.launcher_default_affine_filter = false;
     opts.launcher_region = "USA";
+
 #if !defined(__SWITCH__)
-    // The launcher reads [rom].path and [bios].path from this file when its
-    // per-user cache is empty, so the verified local ROM is preselected.
     opts.launcher_game_config = "game.toml";
-    opts.launcher_save_path = "saves/mario_kart_super_circuit_usa.sav";
+    opts.launcher_save_path = "saves/medabots_rokusho.sav";
 #endif
-
-
 
 #if defined(GBAGAME_RECOMP_UI) && !defined(__SWITCH__)
     if (game_launcher_preboot(args, opts)) return 0;
@@ -333,17 +417,18 @@ int main(int argc, char** argv) {
 
 #if defined(__SWITCH__)
     opts.show_fps_by_default = g_config_show_fps;
-    gba_mod_set_adaptive_view_user_config(config_widescreen ? 1 : 0);
-    gba_mod_set_60fps_track_enabled(config_fps60 ? 1 : 0);
 
-    static char arg_prog[]        = "mksc_nx";
+    static char arg_prog[]        = "medabots_nx";
     static char arg_bios_flag[]   = "--bios";
-    static char arg_bios_path[]   = "sdmc:/switch/mksc_nx/gba_bios.bin";
+    static char arg_bios_path[]   = "sdmc:/switch/medabots_nx/gba_bios.bin";
     static char arg_rom_flag[]    = "--rom";
-    static char arg_rom_path[]    = "sdmc:/switch/mksc_nx/rom.gba";
+    static char arg_rom_path[256];
+    std::snprintf(arg_rom_path, sizeof(arg_rom_path), "%s", selected_rom_path.c_str());
+    static char arg_save_flag[]   = "--save";
+    static char arg_save_path[]   = "sdmc:/switch/medabots_nx/save/rom.sav";
     static char arg_linear_flag[] = "--linear-filter";
     static char arg_uncapped_flag[] = "--uncapped";
-    static char arg_hle[] = "--bios-hle";
+    static char arg_hle[]         = "--bios-hle";
 
     std::vector<char*> av;
     av.push_back(argv && argv[0] ? argv[0] : arg_prog);
@@ -351,6 +436,8 @@ int main(int argc, char** argv) {
     av.push_back(arg_bios_path);
     av.push_back(arg_rom_flag);
     av.push_back(arg_rom_path);
+    av.push_back(arg_save_flag);
+    av.push_back(arg_save_path);
     av.push_back(arg_hle);
 
     if (config_linear_filter) {

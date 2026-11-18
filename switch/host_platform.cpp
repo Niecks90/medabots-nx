@@ -36,20 +36,20 @@ void FramePacer::wait_for_next_frame() {
 
 #if defined(__SWITCH__)
     // On Nintendo Switch Horizon OS:
-    // svcSleepThread has a typical granularity of ~1-2 ms.
-    // Leave a 2.5 ms spin tail to prevent the kernel sleep from overshooting the deadline.
-    constexpr auto kSwitchSpinTail = std::chrono::microseconds(2500);
+    // svcSleepThread has a typical granularity of ~1 ms.
+    // Leave a 1.5 ms spin tail to prevent kernel sleep from overshooting the 59.73 Hz deadline.
+    constexpr auto kSwitchSpinTail = std::chrono::microseconds(1500);
     if (next_ - now > kSwitchSpinTail) {
         const auto sleep_dur = std::chrono::duration_cast<std::chrono::nanoseconds>(next_ - now - kSwitchSpinTail);
         svcSleepThread(sleep_dur.count());
     }
-    // Precision tail: yield quantum on Switch until target time is reached.
+    // Precision tail using ARM yield instruction (no OS scheduler descheduling).
     while (clock::now() < next_) {
-        svcSleepThread(0);
+        asm volatile("yield");
     }
     const clock::time_point woke = clock::now();
-    // Allow up to 8 ms tolerance for transient hitches so we don't drop cadence to 50 FPS.
-    constexpr auto kLateTolerance = std::chrono::microseconds(8000);
+    // Allow up to 3 ms tolerance for transient hitches so we don't drop cadence.
+    constexpr auto kLateTolerance = std::chrono::microseconds(3000);
     next_ = woke > next_ + kLateTolerance ? woke + period_ : next_ + period_;
 #else
     constexpr auto kSpinTail = std::chrono::microseconds(1200);

@@ -16,6 +16,8 @@ recomp_cache/
 saves/
 *.sav
 *.srm
+*.zip
+TASK.md
 *.exe
 *.dll
 *.pdb
