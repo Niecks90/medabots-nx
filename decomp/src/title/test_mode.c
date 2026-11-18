@@ -1,0 +1,345 @@
+// Mode-2 state 7: the hidden TEST MODE screen (Music / Effect / Erase saved game / Exit).
+// test_mode_dispatch runs gTestModeStates: graphics, fades, test_mode_update (menu input, sound test), then the
+// erase-save steps (test_mode_erase_save retries save_dispatch(2) through save/save_data.c).
+#include "global.h"
+#include "constants/sprites.h"
+
+static inline void *vram_at(u32 off) {
+    return (void *)(BG_CHAR_ADDR(1) + off);
+}
+
+void test_mode_dispatch(void) {
+    gTestModeStates[gGameSubState]();
+    if (gFrameCounter & 1) {
+        gBg3Scroll.x++;
+        gBg3Scroll.y++;
+    }
+}
+
+void test_mode_reset(void) {
+    u32 zero;
+
+    play_song(0);
+    zero = 0;
+    CpuFastSet(&zero, (void *)VRAM, 0x01006000);
+    reset_bg_scroll();
+    clear_battle_sprite_slot(0, 0x80);
+    REG_DISPCNT = 0x60;
+    REG_BLDCNT = 0x2FF;
+    REG_BLDY = 0x10;
+    gGameSubState++;
+}
+
+void test_mode_load_graphics(void) {
+    vu16 *bg1, *bg2, *bg3;
+    u16 bgcnt;
+    u32 size;
+    u8 zero;
+    u8 i;
+
+    bg1 = &REG_BG1CNT;
+    bgcnt = 0x1E05;
+    *bg1 = bgcnt;
+    bg2 = &REG_BG2CNT;
+    bgcnt -= 0xFF;
+    *bg2 = bgcnt;
+    bg3 = &REG_BG3CNT;
+    bgcnt = 0x3C07;
+    *bg3 = bgcnt;
+    decompress_and_write_tilemap(gTestModeBg1Tilemap, *bg1);
+    decompress_and_write_tilemap(gTestModeBg2Tilemap, *bg2);
+    decompress_and_write_tilemap(gTestModeBg3Tilemap, *bg3);
+    size = dma3_copy_or_decompress(gTestModeBgTiles, gDecompressBuffer);
+    CpuCopy16(gDecompressBuffer, vram_at(0), size);
+    lz_decompress_dispatch(gMenuDigitTilesLz, vram_at(size));
+    gMenuWork->bg_tile_base = (size >> 5) - 1;
+    zero = 0;
+    CpuFastSet(gTestModeBgPalette, (void *)PLTT, 0x80);
+    CpuFastSet(gMenuDigitPalette, (void *)(PLTT + 0x1C0), 8);
+    lz_decompress_dispatch(gMenuObjTilesLz, (void *)OBJ_VRAM0);
+    CpuFastSet(gCursorArrowPalette, (void *)(PLTT + 0x3C0), 8);
+    gSpriteEntries[0].flags = SPRITE_FLAG_ENABLED;
+    gSpriteEntries[0].frame_table = 2;
+    gSpriteEntries[0].palette = 0xE;
+    gSpriteEntries[0].frame = 6;
+    gMenuWork->cursor = zero;
+    gSpriteEntries[0].x = 0x14;
+    gSpriteEntries[0].y = gMenuWork->cursor * 16 + 0x20;
+    for (i = 0; i <= 1; i++) {
+        gSpriteEntries[i + 1].flags = SPRITE_FLAG_ENABLED;
+        gSpriteEntries[i + 1].frame_table = 2;
+        gSpriteEntries[i + 1].palette = 0xE;
+        gSpriteEntries[i + 1].frame = 5;
+    }
+    gSpriteEntries[1].flags |= SPRITE_FLAG_HFLIP;
+    gSpriteEntries[1].x = 0x78;
+    gSpriteEntries[1].y = 0x20;
+    gSpriteEntries[2].x = 0x90;
+    gSpriteEntries[2].y = 0x20;
+    for (i = 0; i <= 1; i++) {
+        gSpriteEntries[i + 3].flags = SPRITE_FLAG_ENABLED;
+        gSpriteEntries[i + 3].frame_table = 2;
+        gSpriteEntries[i + 3].palette = 0xE;
+        gSpriteEntries[i + 3].frame = 5;
+    }
+    gSpriteEntries[3].flags |= SPRITE_FLAG_HFLIP;
+    gSpriteEntries[3].x = 0x78;
+    gSpriteEntries[3].y = 0x30;
+    gSpriteEntries[4].x = 0x90;
+    gSpriteEntries[4].y = 0x30;
+    gGameSubState++;
+}
+
+void test_mode_show_screen(void) {
+    REG_DISPCNT |= 0x200;
+    REG_DISPCNT |= 0x400;
+    REG_DISPCNT |= 0x800;
+    REG_DISPCNT |= 0x1000;
+    gMenuWork->sound_test_song = 0;
+    gMenuWork->sound_test_effect = 0;
+    draw_number(gMenuWork->sound_test_song, -2, 0x10, 4, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+    draw_number(gMenuWork->sound_test_effect, -3, 0xF, 6, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+    gMenuWork->fade_level = 0x20;
+    REG_BLDY = gMenuWork->fade_level >> 1;
+    gGameSubState++;
+}
+
+void test_mode_fade_in(void) {
+    struct MenuWork *menu = gMenuWork;
+
+    if (menu->fade_level != 0) {
+        REG_BLDY = menu->fade_level-- >> 1;
+    } else {
+        menu->timer = 0;
+        menu->fade_level = 0;
+        gMenuWork->returning = 0;
+        gMenuWork->counter = 0;
+        gMenuWork->aux = 0;
+        gMenuWork->pending_sound = 0;
+        gMenuWork->sound_delay = 0;
+        gSpriteEntries[0].flags |= SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[1].flags |= SPRITE_FLAG_VISIBLE;
+        gGameSubState++;
+    }
+}
+
+void test_mode_update(void) {
+    sprite_bob_x(0, gFrameCounter, 0x14);
+    if (gMenuWork->counter != 0) {
+        if (--gMenuWork->counter == 0)
+            play_sound_effect(2);
+    }
+    if (KEYS_LO(gRepeatKeys) & DPAD_UP) {
+        if (gMenuWork->cursor != 0)
+            gMenuWork->cursor--;
+        else
+            gMenuWork->cursor = 3;
+        play_song(0);
+        gMenuWork->counter = 2;
+    }
+    if (KEYS_LO(gRepeatKeys) & DPAD_DOWN) {
+        if (gMenuWork->cursor <= 2)
+            gMenuWork->cursor++;
+        else
+            gMenuWork->cursor = 0;
+        play_song(0);
+        gMenuWork->counter = 2;
+    }
+    gSpriteEntries[0].y = gMenuWork->cursor * 16 + 0x20;
+    switch (gMenuWork->cursor) {
+    case 0:
+        if (gFrameCounter & 8) {
+            gSpriteEntries[1].flags |= SPRITE_FLAG_VISIBLE;
+            gSpriteEntries[2].flags |= SPRITE_FLAG_VISIBLE;
+        } else {
+            gSpriteEntries[1].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+            gSpriteEntries[2].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        }
+        gSpriteEntries[3].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[4].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        break;
+    case 1:
+        gSpriteEntries[1].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[2].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        if (gFrameCounter & 8) {
+            gSpriteEntries[3].flags |= SPRITE_FLAG_VISIBLE;
+            gSpriteEntries[4].flags |= SPRITE_FLAG_VISIBLE;
+        } else {
+            gSpriteEntries[3].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+            gSpriteEntries[4].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        }
+        break;
+    default:
+        gSpriteEntries[1].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[2].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[3].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        gSpriteEntries[4].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+        break;
+    }
+    switch (gMenuWork->cursor) {
+    case 0:
+        if (KEYS_LO(gRepeatKeys) & DPAD_LEFT) {
+            if (gMenuWork->sound_test_song != 0)
+                gMenuWork->sound_test_song--;
+            else
+                gMenuWork->sound_test_song = 0x33;
+            draw_number(gMenuWork->sound_test_song, -2, 0x10, 4, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+        }
+        if (KEYS_LO(gRepeatKeys) & DPAD_RIGHT) {
+            if (gMenuWork->sound_test_song <= 0x32)
+                gMenuWork->sound_test_song++;
+            else
+                gMenuWork->sound_test_song = 0;
+            draw_number(gMenuWork->sound_test_song, -2, 0x10, 4, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+        }
+        break;
+    case 1:
+        if (KEYS_LO(gRepeatKeys) & DPAD_LEFT) {
+            if (gMenuWork->sound_test_effect != 0)
+                gMenuWork->sound_test_effect--;
+            else
+                gMenuWork->sound_test_effect = 0x75;
+            draw_number(gMenuWork->sound_test_effect, -3, 0xF, 6, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+        }
+        if (KEYS_LO(gRepeatKeys) & DPAD_RIGHT) {
+            if (gMenuWork->sound_test_effect <= 0x74)
+                gMenuWork->sound_test_effect++;
+            else
+                gMenuWork->sound_test_effect = 0;
+            draw_number(gMenuWork->sound_test_effect, -3, 0xF, 6, 2, BGCNT_SCREEN_BLOCK(REG_BG1CNT));
+        }
+        break;
+    }
+    if (gMenuWork->sound_delay != 0)
+        gMenuWork->sound_delay--;
+    if (gMenuWork->pending_sound != 0 && gMenuWork->sound_delay == 0) {
+        play_sound_effect(gMenuWork->pending_sound);
+        gMenuWork->pending_sound = 0;
+    }
+    if (KEYS_LO(gNewKeys) & A_BUTTON) {
+        switch (gMenuWork->cursor) {
+        case 0:
+            play_song(gSoundTestSongs[gMenuWork->sound_test_song]);
+            return;
+        case 1:
+            gMenuWork->sound_delay = 2;
+            gMenuWork->pending_sound = gSoundTestEffects[gMenuWork->sound_test_effect];
+            play_song(0);
+            play_sound_effect(0);
+            return;
+        case 2:
+            play_sound_effect(4);
+            open_choice_menu(1, 0x16, 7);
+            text_window_init(1, 2, 0);
+            gGameSubState = 6;
+            return;
+        case 3:
+            gMenuWork->aux = 0;
+            break;
+        default:
+            return;
+        }
+    } else if (KEYS_LO(gNewKeys) & B_BUTTON) {
+        gMenuWork->aux = 1;
+    } else {
+        return;
+    }
+    play_song(0);
+    gMenuWork->fade_level = 0;
+    gGameSubState = 5;
+    gSpriteEntries[0].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+    gSpriteEntries[1].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+    gSpriteEntries[2].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+    gSpriteEntries[3].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+    gSpriteEntries[4].flags &= (u16)~SPRITE_FLAG_VISIBLE;
+}
+
+void test_mode_fade_out_exit(void) {
+    if (gMenuWork->fade_level == 1)
+        play_sound_effect(gMenuWork->aux ? 5 : 4);
+    if (gMenuWork->fade_level != 32) {
+        gMenuWork->fade_level++;
+        REG_BLDY = gMenuWork->fade_level >> 1;
+    } else {
+        REG_DISPCNT &= 0xFDFF;
+        gGameMode = GAME_MODE_SCENE;
+        gGameState = MODE3_STATE_TITLE_SCREEN;
+        gGameSubState = 0;
+        gTitleSkipIntro = 1;
+    }
+}
+
+void test_mode_erase_prompt(void) {
+    if (run_message(gSystemMessages[3]))
+        gGameSubState++;
+}
+
+void test_mode_erase_choice(void) {
+    if (poll_choice_menu()) {
+        gMenuWork->timer = 0;
+        message_next();
+        if (gGameWork.choiceCursor == 0)
+            gGameSubState = 9;
+        else
+            gGameSubState++;
+    }
+}
+
+void test_mode_erase_caution(void) {
+    if (run_message(gSystemMessages[16])) {
+        if (gMenuWork->timer++ > 60)
+            gGameSubState = 13;
+    }
+}
+
+void test_mode_close_message(void) {
+    if (game_state_execute_handler_a())
+        gGameSubState = 4;
+}
+
+void test_mode_erase_start(void) {
+    if (run_message(gSystemMessages[4])) {
+        play_song(0);
+        play_sound_effect(0);
+        eeprom_setup_timer_irq();
+        gMenuWork->timer = 0;
+        gGameSubState++;
+    }
+}
+
+void test_mode_erase_save(void) {
+    u8 elapsed = gMenuWork->timer++;
+    u16 err = 0;
+    s8 i;
+
+    if (elapsed > 29 && !is_sound_effect_playing(4)) {
+        for (i = 0; i <= 3; i++) {
+            err = save_dispatch(2);
+            if (err == 0)
+                break;
+        }
+        if (err == 0) {
+            message_next();
+            gMenuWork->timer = err;
+            gGameSubState++;
+        } else {
+            message_next();
+            gMenuWork->timer = 0;
+            gGameSubState = 12;
+        }
+    }
+}
+
+void test_mode_erase_done(void) {
+    if (run_message(gSystemMessages[5])) {
+        if (gMenuWork->timer++ > 60)
+            gGameSubState = 8;
+    }
+}
+
+void test_mode_erase_failed(void) {
+    if (run_message(gSystemMessages[6])) {
+        if (gMenuWork->timer++ > 60)
+            gGameSubState = 8;
+    }
+}

@@ -1,0 +1,1427 @@
+	.section .rodata
+
+	.global gData_083AB9D0
+gData_083AB9D0:
+
+	.global gSoundPsgNoteFreqs
+gSoundPsgNoteFreqs:
+	.incbin "baserom.gba", 0x3AB9D0, 0x92
+
+	.global gSoundWaveVolumes
+gSoundWaveVolumes:
+	.incbin "baserom.gba", 0x3ABA62, 0x10
+
+	.global gSoundOutputMasks
+gSoundOutputMasks:
+	.incbin "baserom.gba", 0x3ABA72, 0x4
+
+	.global gSoundOutputBits
+gSoundOutputBits:
+	.incbin "baserom.gba", 0x3ABA76, 0x12
+
+	.global gSoundFifoVolumeMasks
+gSoundFifoVolumeMasks:
+	.incbin "baserom.gba", 0x3ABA88, 0x4
+
+	.global gSoundFifoVolumeBits
+gSoundFifoVolumeBits:
+	.incbin "baserom.gba", 0x3ABA8C, 0x20
+
+	.global gSoundFifoResetBits
+gSoundFifoResetBits:
+	.incbin "baserom.gba", 0x3ABAAC, 0x2
+
+	.global gSoundFifoEnableBits
+gSoundFifoEnableBits:
+	.incbin "baserom.gba", 0x3ABAAE, 0x4
+
+	.global gSoundFifoOutputBits
+gSoundFifoOutputBits:
+	.incbin "baserom.gba", 0x3ABAB2, 0x10
+
+	.global gSoundFifoOutputMasks
+gSoundFifoOutputMasks:
+	.incbin "baserom.gba", 0x3ABAC2, 0x4
+
+	.global gSoundSemitoneRatios
+gSoundSemitoneRatios:
+	.incbin "baserom.gba", 0x3ABAC6, 0x18
+
+	.global gSoundFinetuneRatios
+gSoundFinetuneRatios:
+	.incbin "baserom.gba", 0x3ABADE, 0x102
+
+	.global gSoundTrackConfigs
+gSoundTrackConfigs:
+	.incbin "baserom.gba", 0x3ABBE0, 0x9C
+
+	.global gSoundEffectTracks
+gSoundEffectTracks:
+	.incbin "baserom.gba", 0x3ABC7C, 0x24
+
+	.global gUnk_083ABCA0
+gUnk_083ABCA0:
+	.incbin "baserom.gba", 0x3ABCA0, 0xC
+
+	.global gUnk_083ABCAC
+gUnk_083ABCAC:
+	.incbin "baserom.gba", 0x3ABCAC, 0xC
+
+	.global gUnk_083ABCB8
+gUnk_083ABCB8:
+	.incbin "baserom.gba", 0x3ABCB8, 0x160
+
+	.global gGameModeHandlers
+gGameModeHandlers:
+	.incbin "baserom.gba", 0x3ABE18, 0x18
+
+	.global gSpriteFrameSets
+gSpriteFrameSets:
+	.incbin "baserom.gba", 0x3ABE30, 0x258
+
+	.global gSpriteFrameSets1
+gSpriteFrameSets1:
+	.incbin "baserom.gba", 0x3AC088, 0x40
+
+	.global gMenuSpriteFrameSets
+gMenuSpriteFrameSets:
+	.incbin "baserom.gba", 0x3AC0C8, 0x40
+
+	.global gSpriteFrameSets3
+gSpriteFrameSets3:
+	.incbin "baserom.gba", 0x3AC108, 0x40
+
+	.global gMenuBattleModeStates
+gMenuBattleModeStates:
+	.incbin "baserom.gba", 0x3AC148, 0x100
+
+	.global gDevTestStates
+gDevTestStates:
+	.incbin "baserom.gba", 0x3AC248, 0x3C
+
+	.global gFieldMenuHandlers
+gFieldMenuHandlers:
+	.incbin "baserom.gba", 0x3AC284, 0x50
+
+	.global gMedawatchMenuHandlers
+gMedawatchMenuHandlers:
+	.incbin "baserom.gba", 0x3AC2D4, 0x4C
+
+	.global gMedabotsScreenHandlers
+gMedabotsScreenHandlers:
+	.incbin "baserom.gba", 0x3AC320, 0x100
+
+	.global gMedabotsCursorOrbitCenters
+gMedabotsCursorOrbitCenters:
+	.incbin "baserom.gba", 0x3AC420, 0x12
+
+	.global gMedabotsSlotSpritePriorities
+gMedabotsSlotSpritePriorities:
+	.incbin "baserom.gba", 0x3AC432, 0x9
+
+	.global gMedabotsSlotPositions
+gMedabotsSlotPositions:
+	.incbin "baserom.gba", 0x3AC43B, 0x12
+
+	.global gMedabotsSlotPedestalTilePositions
+gMedabotsSlotPedestalTilePositions:
+	.incbin "baserom.gba", 0x3AC44D, 0x1B
+
+	.global gTeamSelectNextSlot
+gTeamSelectNextSlot:
+	.incbin "baserom.gba", 0x3AC468, 0x1C
+
+	.global gMedabotSlotDpadMoves
+gMedabotSlotDpadMoves:
+	.incbin "baserom.gba", 0x3AC484, 0x10
+
+	.global gMedalSpriteGfx
+gMedalSpriteGfx:
+	.incbin "baserom.gba", 0x3AC494, 0x258
+
+	.global gMedalsScreenHandlers
+gMedalsScreenHandlers:
+	.incbin "baserom.gba", 0x3AC6EC, 0x1C0
+
+	.global gMedalSkillDebugCursorPos
+gMedalSkillDebugCursorPos:
+	.incbin "baserom.gba", 0x3AC8AC, 0x20
+
+	.global gMedalTradeChoiceCloseSteps
+gMedalTradeChoiceCloseSteps:
+	.incbin "baserom.gba", 0x3AC8CC, 0x10
+
+	.global gDebugMenuHandlers
+gDebugMenuHandlers:
+	.incbin "baserom.gba", 0x3AC8DC, 0x24
+
+	.global gDebugMenuEntryHandlers
+gDebugMenuEntryHandlers:
+	.incbin "baserom.gba", 0x3AC900, 0x40
+
+	.global gDebugProcessHandlers
+gDebugProcessHandlers:
+	.incbin "baserom.gba", 0x3AC940, 0xC
+
+	.global gDebugMedalHandlers
+gDebugMedalHandlers:
+	.incbin "baserom.gba", 0x3AC94C, 0xC
+
+	.global gDebugPartsHandlers
+gDebugPartsHandlers:
+	.incbin "baserom.gba", 0x3AC958, 0xC
+
+	.global gDebugTinpetHandlers
+gDebugTinpetHandlers:
+	.incbin "baserom.gba", 0x3AC964, 0xC
+
+	.global gDebugItemHandlers
+gDebugItemHandlers:
+	.incbin "baserom.gba", 0x3AC970, 0xC
+
+	.global gDebugFaceHandlers
+gDebugFaceHandlers:
+	.incbin "baserom.gba", 0x3AC97C, 0xC
+
+	.global gDebugMdlpicHandlers
+gDebugMdlpicHandlers:
+	.incbin "baserom.gba", 0x3AC988, 0xC
+
+	.global gDebugRndTkHandlers
+gDebugRndTkHandlers:
+	.incbin "baserom.gba", 0x3AC994, 0xC
+
+	.global gDebugBattleHandlers
+gDebugBattleHandlers:
+	.incbin "baserom.gba", 0x3AC9A0, 0xC
+
+	.global gDebugSoundHandlers
+gDebugSoundHandlers:
+	.incbin "baserom.gba", 0x3AC9AC, 0xC
+
+	.global gDebugMotionHandlers
+gDebugMotionHandlers:
+	.incbin "baserom.gba", 0x3AC9B8, 0x68
+
+	.global gDebugMenuLabels
+gDebugMenuLabels:
+	.incbin "baserom.gba", 0x3ACA20, 0x44
+
+	.global gDebugProcessLabels
+gDebugProcessLabels:
+	.incbin "baserom.gba", 0x3ACA64, 0x24
+
+	.global gDebugMedalLabels
+gDebugMedalLabels:
+	.incbin "baserom.gba", 0x3ACA88, 0x24
+
+	.global gDebugPartsLabels
+gDebugPartsLabels:
+	.incbin "baserom.gba", 0x3ACAAC, 0x14
+
+	.global gDebugTinpetLabels
+gDebugTinpetLabels:
+	.incbin "baserom.gba", 0x3ACAC0, 0x1C
+
+	.global gDebugItemLabels
+gDebugItemLabels:
+	.incbin "baserom.gba", 0x3ACADC, 0x1C
+
+	.global gDebugFaceLabels
+gDebugFaceLabels:
+	.incbin "baserom.gba", 0x3ACAF8, 0x18
+
+	.global gDebugMdlpicLabels
+gDebugMdlpicLabels:
+	.incbin "baserom.gba", 0x3ACB10, 0x10
+
+	.global gDebugRndTkLabels
+gDebugRndTkLabels:
+	.incbin "baserom.gba", 0x3ACB20, 0xC
+
+	.global gDebugBattleLabels
+gDebugBattleLabels:
+	.incbin "baserom.gba", 0x3ACB2C, 0x14
+
+	.global gDebugSoundLabels
+gDebugSoundLabels:
+	.incbin "baserom.gba", 0x3ACB40, 0x10
+
+	.global gDebugMotionLabels
+gDebugMotionLabels:
+	.incbin "baserom.gba", 0x3ACB50, 0x4
+
+	.global gMedapartsScreenHandlers
+gMedapartsScreenHandlers:
+	.incbin "baserom.gba", 0x3ACB54, 0x140
+
+	.global gMedapartTradeChoiceCloseSteps
+gMedapartTradeChoiceCloseSteps:
+	.incbin "baserom.gba", 0x3ACC94, 0x10
+
+	.global gPrebattleScreenHandlers
+gPrebattleScreenHandlers:
+	.incbin "baserom.gba", 0x3ACCA4, 0x240
+
+	.global gOpponentSpritePositions
+gOpponentSpritePositions:
+	.incbin "baserom.gba", 0x3ACEE4, 0x6
+
+	.global gOpponentLegIconPositions
+gOpponentLegIconPositions:
+	.incbin "baserom.gba", 0x3ACEEA, 0x6
+
+	.global gRandomBotSlotStarts
+gRandomBotSlotStarts:
+	.incbin "baserom.gba", 0x3ACEF0, 0x10
+
+	.global gRobattleHandlers
+gRobattleHandlers:
+	.incbin "baserom.gba", 0x3ACF00, 0x300
+
+	.global gMedalAttributeBaseSkills
+gMedalAttributeBaseSkills:
+	.incbin "baserom.gba", 0x3AD200, 0xF0
+
+	.global gAiPartOrders
+gAiPartOrders:
+	.incbin "baserom.gba", 0x3AD2F0, 0x80
+
+	.global gCommandRingIconAngles
+gCommandRingIconAngles:
+	.incbin "baserom.gba", 0x3AD370, 0x6
+
+	.global gCommandRingNextSlotRight
+gCommandRingNextSlotRight:
+	.incbin "baserom.gba", 0x3AD376, 0x6
+
+	.global gCommandRingNextSlotLeft
+gCommandRingNextSlotLeft:
+	.incbin "baserom.gba", 0x3AD37C, 0x6
+
+	.global gBotPointerLineParams
+gBotPointerLineParams:
+	.incbin "baserom.gba", 0x3AD382, 0x18
+
+	.global gCommandRingSubStates
+gCommandRingSubStates:
+	.incbin "baserom.gba", 0x3AD39A, 0x6
+
+	.global gPartSelectCenterFrames
+gPartSelectCenterFrames:
+	.incbin "baserom.gba", 0x3AD3A0, 0x4
+
+	.global gTeamBotScreenPositions
+gTeamBotScreenPositions:
+	.incbin "baserom.gba", 0x3AD3A4, 0xC
+
+	.global gBattleSongs
+gBattleSongs:
+	.incbin "baserom.gba", 0x3AD3B0, 0x3
+
+	.global gNumberPopupYSteps
+gNumberPopupYSteps:
+	.incbin "baserom.gba", 0x3AD3B3, 0x20
+
+	.global gRandomBotOrder
+gRandomBotOrder:
+	.incbin "baserom.gba", 0x3AD3D3, 0x20
+
+	.global gLinkBotRecordSwap
+gLinkBotRecordSwap:
+	.incbin "baserom.gba", 0x3AD3F3, 0x6
+
+	.global gTargetSwapSideTable
+gTargetSwapSideTable:
+	.incbin "baserom.gba", 0x3AD3F9, 0x7
+
+	.global gBattleMessageSteps
+gBattleMessageSteps:
+	.incbin "baserom.gba", 0x3AD400, 0x10
+
+	.global gMissPopupSteps
+gMissPopupSteps:
+	.incbin "baserom.gba", 0x3AD410, 0x14
+
+	.global gTargetPanelSteps
+gTargetPanelSteps:
+	.incbin "baserom.gba", 0x3AD424, 0x28
+
+	.global gTrapHitSteps
+gTrapHitSteps:
+	.incbin "baserom.gba", 0x3AD44C, 0xC0
+
+	.global gActionPartCheckSteps
+gActionPartCheckSteps:
+	.incbin "baserom.gba", 0x3AD50C, 0x24
+
+	.global gTargetPartCheckSteps
+gTargetPartCheckSteps:
+	.incbin "baserom.gba", 0x3AD530, 0x20
+
+	.global gActionFlashSteps
+gActionFlashSteps:
+	.incbin "baserom.gba", 0x3AD550, 0x20
+
+	.global gGuardSteps
+gGuardSteps:
+	.incbin "baserom.gba", 0x3AD570, 0x40
+
+	.global gActionAnnounceSteps
+gActionAnnounceSteps:
+	.incbin "baserom.gba", 0x3AD5B0, 0x20
+
+	.global gCloseupEnterSteps
+gCloseupEnterSteps:
+	.incbin "baserom.gba", 0x3AD5D0, 0x40
+
+	.global gAttackHitSteps
+gAttackHitSteps:
+	.incbin "baserom.gba", 0x3AD610, 0x140
+
+	.global gStatusAttackSteps
+gStatusAttackSteps:
+	.incbin "baserom.gba", 0x3AD750, 0x44
+
+	.global gCloseupExitSteps
+gCloseupExitSteps:
+	.incbin "baserom.gba", 0x3AD794, 0x40
+
+	.global gBotDefeatSteps
+gBotDefeatSteps:
+	.incbin "baserom.gba", 0x3AD7D4, 0x40
+
+	.global gReactionSteps
+gReactionSteps:
+	.incbin "baserom.gba", 0x3AD814, 0x64
+
+	.global gSacrificeSteps
+gSacrificeSteps:
+	.incbin "baserom.gba", 0x3AD878, 0x20
+
+	.global gDestroyCheckSteps
+gDestroyCheckSteps:
+	.incbin "baserom.gba", 0x3AD898, 0x20
+
+	.global gRecoverySteps
+gRecoverySteps:
+	.incbin "baserom.gba", 0x3AD8B8, 0x20
+
+	.global gRecoveryHealSteps
+gRecoveryHealSteps:
+	.incbin "baserom.gba", 0x3AD8D8, 0x64
+
+	.global gRepairSteps
+gRepairSteps:
+	.incbin "baserom.gba", 0x3AD93C, 0x20
+
+	.global gRepairApplySteps
+gRepairApplySteps:
+	.incbin "baserom.gba", 0x3AD95C, 0x64
+
+	.global gTrapSteps
+gTrapSteps:
+	.incbin "baserom.gba", 0x3AD9C0, 0xAC
+
+	.global gBreakFormSteps
+gBreakFormSteps:
+	.incbin "baserom.gba", 0x3ADA6C, 0x80
+
+	.global gStabilitySteps
+gStabilitySteps:
+	.incbin "baserom.gba", 0x3ADAEC, 0x40
+
+	.global gForceBindSteps
+gForceBindSteps:
+	.incbin "baserom.gba", 0x3ADB2C, 0x40
+
+	.global gDefenceSteps
+gDefenceSteps:
+	.incbin "baserom.gba", 0x3ADB6C, 0x40
+
+	.global gAutoRecoverSteps
+gAutoRecoverSteps:
+	.incbin "baserom.gba", 0x3ADBAC, 0x60
+
+	.global gReactivateSteps
+gReactivateSteps:
+	.incbin "baserom.gba", 0x3ADC0C, 0x60
+
+	.global gScoutSteps
+gScoutSteps:
+	.incbin "baserom.gba", 0x3ADC6C, 0x54
+
+	.global gConcealSteps
+gConcealSteps:
+	.incbin "baserom.gba", 0x3ADCC0, 0x60
+
+	.global gBoostChargeSteps
+gBoostChargeSteps:
+	.incbin "baserom.gba", 0x3ADD20, 0x60
+
+	.global gRapidChargeSteps
+gRapidChargeSteps:
+	.incbin "baserom.gba", 0x3ADD80, 0x60
+
+	.global gDrainChargeSteps
+gDrainChargeSteps:
+	.incbin "baserom.gba", 0x3ADDE0, 0x80
+
+	.global gPushoverSteps
+gPushoverSteps:
+	.incbin "baserom.gba", 0x3ADE60, 0x80
+
+	.global gBurstSpriteDirections
+gBurstSpriteDirections:
+	.incbin "baserom.gba", 0x3ADEE0, 0x4
+
+	.global gImpairSteps
+gImpairSteps:
+	.incbin "baserom.gba", 0x3ADEE4, 0x60
+
+	.global gConfusionSteps
+gConfusionSteps:
+	.incbin "baserom.gba", 0x3ADF44, 0x60
+
+	.global gUseDrainSteps
+gUseDrainSteps:
+	.incbin "baserom.gba", 0x3ADFA4, 0x60
+
+	.global gNoEscapeDefenseSteps
+gNoEscapeDefenseSteps:
+	.incbin "baserom.gba", 0x3AE004, 0x60
+
+	.global gForcedrainSteps
+gForcedrainSteps:
+	.incbin "baserom.gba", 0x3AE064, 0x80
+
+	.global gTeamAttackCheckSteps
+gTeamAttackCheckSteps:
+	.incbin "baserom.gba", 0x3AE0E4, 0x1C
+
+	.global gTeamAttackTurretSteps
+gTeamAttackTurretSteps:
+	.incbin "baserom.gba", 0x3AE100, 0x18
+
+	.global gCounterAttackSteps
+gCounterAttackSteps:
+	.incbin "baserom.gba", 0x3AE118, 0x54
+
+	.global gChangeSteps
+gChangeSteps:
+	.incbin "baserom.gba", 0x3AE16C, 0x54
+
+	.global gMedaforceSpiralBoltSteps
+gMedaforceSpiralBoltSteps:
+	.incbin "baserom.gba", 0x3AE1C0, 0x80
+
+	.global gMedaforceHitSteps
+gMedaforceHitSteps:
+	.incbin "baserom.gba", 0x3AE240, 0xC0
+
+	.global gMedaforceLifeDrainHealSteps
+gMedaforceLifeDrainHealSteps:
+	.incbin "baserom.gba", 0x3AE300, 0x80
+
+	.global gMedaforceSideBoltSteps
+gMedaforceSideBoltSteps:
+	.incbin "baserom.gba", 0x3AE380, 0x80
+
+	.global gMedaforceFormSteps
+gMedaforceFormSteps:
+	.incbin "baserom.gba", 0x3AE400, 0x40
+
+	.global gMedaforceAntiAttackTrapSteps
+gMedaforceAntiAttackTrapSteps:
+	.incbin "baserom.gba", 0x3AE440, 0x40
+
+	.global gMedaforceCancelFormationSteps
+gMedaforceCancelFormationSteps:
+	.incbin "baserom.gba", 0x3AE480, 0x40
+
+	.global gMedaforceInflictStatusSteps
+gMedaforceInflictStatusSteps:
+	.incbin "baserom.gba", 0x3AE4C0, 0x40
+
+	.global gMedaforceCancelStatusSteps
+gMedaforceCancelStatusSteps:
+	.incbin "baserom.gba", 0x3AE500, 0x40
+
+	.global gMedaforceStatusRestoreSteps
+gMedaforceStatusRestoreSteps:
+	.incbin "baserom.gba", 0x3AE540, 0x40
+
+	.global gMedaforceTotalRecoverySteps
+gMedaforceTotalRecoverySteps:
+	.incbin "baserom.gba", 0x3AE580, 0x40
+
+	.global gMedaforceFullBodyRepairSteps
+gMedaforceFullBodyRepairSteps:
+	.incbin "baserom.gba", 0x3AE5C0, 0x40
+
+	.global gMedaforceFullBodyUpSteps
+gMedaforceFullBodyUpSteps:
+	.incbin "baserom.gba", 0x3AE600, 0x40
+
+	.global gMedaforceFullBodyRadSteps
+gMedaforceFullBodyRadSteps:
+	.incbin "baserom.gba", 0x3AE640, 0x40
+
+	.global gMedaforceIronWallSteps
+gMedaforceIronWallSteps:
+	.incbin "baserom.gba", 0x3AE680, 0x40
+
+	.global gMedaforcePowerUpSteps
+gMedaforcePowerUpSteps:
+	.incbin "baserom.gba", 0x3AE6C0, 0x40
+
+	.global gMedaforceAntiTerrainSteps
+gMedaforceAntiTerrainSteps:
+	.incbin "baserom.gba", 0x3AE700, 0x50
+
+	.global gMedaforceLegsStatUpSteps
+gMedaforceLegsStatUpSteps:
+	.incbin "baserom.gba", 0x3AE750, 0x40
+
+	.global gMedaforceSpyGameSteps
+gMedaforceSpyGameSteps:
+	.incbin "baserom.gba", 0x3AE790, 0x40
+
+	.global gSpyGameBeamSpinFrames
+gSpyGameBeamSpinFrames:
+	.incbin "baserom.gba", 0x3AE7D0, 0x4
+
+	.global gMedaforceHideNSeekSteps
+gMedaforceHideNSeekSteps:
+	.incbin "baserom.gba", 0x3AE7D4, 0x40
+
+	.global gMedaforceChargeSteps
+gMedaforceChargeSteps:
+	.incbin "baserom.gba", 0x3AE814, 0x40
+
+	.global gMedaforcePushoverAttackSteps
+gMedaforcePushoverAttackSteps:
+	.incbin "baserom.gba", 0x3AE854, 0x5C
+
+	.global gMedaforceUselessSteps
+gMedaforceUselessSteps:
+	.incbin "baserom.gba", 0x3AE8B0, 0x58
+
+	.global gMedaforceDestroyerSteps
+gMedaforceDestroyerSteps:
+	.incbin "baserom.gba", 0x3AE908, 0x80
+
+	.global gDestroyerSwingFrames
+gDestroyerSwingFrames:
+	.incbin "baserom.gba", 0x3AE988, 0x14
+
+	.global gMedaforceCrazySteps
+gMedaforceCrazySteps:
+	.incbin "baserom.gba", 0x3AE99C, 0x6C
+
+	.global gMedaforceUpSteps
+gMedaforceUpSteps:
+	.incbin "baserom.gba", 0x3AEA08, 0x3C
+
+	.global gMedaforceFormationOrdersSteps
+gMedaforceFormationOrdersSteps:
+	.incbin "baserom.gba", 0x3AEA44, 0x40
+
+	.global gMedaforceLegCrashSteps
+gMedaforceLegCrashSteps:
+	.incbin "baserom.gba", 0x3AEA84, 0x54
+
+	.global gMedaforceProtectorSteps
+gMedaforceProtectorSteps:
+	.incbin "baserom.gba", 0x3AEAD8, 0x40
+
+	.global gMedaforceAntiProtectionSteps
+gMedaforceAntiProtectionSteps:
+	.incbin "baserom.gba", 0x3AEB18, 0x40
+
+	.global gActionPhaseSteps
+gActionPhaseSteps:
+	.incbin "baserom.gba", 0x3AEB58, 0x1C0
+
+	.global gLevelUpSkillPalettes
+gLevelUpSkillPalettes:
+	.incbin "baserom.gba", 0x3AED18, 0x8
+
+	.global gAiTargetPickers
+gAiTargetPickers:
+	.incbin "baserom.gba", 0x3AED20, 0xF0
+
+	.global gAiAfterPick
+gAiAfterPick:
+	.incbin "baserom.gba", 0x3AEE10, 0xF0
+
+	.global gRandomSlots
+gRandomSlots:
+	.incbin "baserom.gba", 0x3AEF00, 0x10
+
+	.global gAiActionChecks
+gAiActionChecks:
+	.incbin "baserom.gba", 0x3AEF10, 0xF0
+
+	.global gActionScriptCommands
+gActionScriptCommands:
+	.incbin "baserom.gba", 0x3AF000, 0x200
+
+	.global gDiceRollValues
+gDiceRollValues:
+	.incbin "baserom.gba", 0x3AF200, 0x10
+
+	.global gSpriteSpeedSteps
+gSpriteSpeedSteps:
+	.incbin "baserom.gba", 0x3AF210, 0x100
+
+	.global gSpriteHopOffsets
+gSpriteHopOffsets:
+	.incbin "baserom.gba", 0x3AF310, 0x20
+
+	.global gRandomPartByIntactClass
+gRandomPartByIntactClass:
+	.incbin "baserom.gba", 0x3AF330, 0x50
+
+	.global gPartFlyStepsHead
+gPartFlyStepsHead:
+	.incbin "baserom.gba", 0x3AF380, 0x40
+
+	.global gPartFlyStepsRightArm
+gPartFlyStepsRightArm:
+	.incbin "baserom.gba", 0x3AF3C0, 0x40
+
+	.global gPartFlyStepsLeftArm
+gPartFlyStepsLeftArm:
+	.incbin "baserom.gba", 0x3AF400, 0x40
+
+	.global gPartFlyStepsLegs
+gPartFlyStepsLegs:
+	.incbin "baserom.gba", 0x3AF440, 0x40
+
+	.global gPartSpriteOffsets
+gPartSpriteOffsets:
+	.incbin "baserom.gba", 0x3AF480, 0x10
+
+	.global gHitSparkOffsets
+gHitSparkOffsets:
+	.incbin "baserom.gba", 0x3AF490, 0x10
+
+	.global gSpriteHopYSteps
+gSpriteHopYSteps:
+	.incbin "baserom.gba", 0x3AF4A0, 0x10
+
+	.global gSpriteSlideXSteps
+gSpriteSlideXSteps:
+	.incbin "baserom.gba", 0x3AF4B0, 0x10
+
+	.global gStaggeredSpriteOffsets
+gStaggeredSpriteOffsets:
+	.incbin "baserom.gba", 0x3AF4C0, 0x20
+
+	.global gSpriteBobYSteps
+gSpriteBobYSteps:
+	.incbin "baserom.gba", 0x3AF4E0, 0x40
+
+	.global gParticleTrailOffsets
+gParticleTrailOffsets:
+	.incbin "baserom.gba", 0x3AF520, 0x10
+
+	.global gParticleOrbitHandlers
+gParticleOrbitHandlers:
+	.incbin "baserom.gba", 0x3AF530, 0x100
+
+	.global gParticleOrbitRadiusSteps
+gParticleOrbitRadiusSteps:
+	.incbin "baserom.gba", 0x3AF630, 0x40
+
+	.global gParticleSwayOffsets
+gParticleSwayOffsets:
+	.incbin "baserom.gba", 0x3AF670, 0x20
+
+	.global gParticleSparkHandlers
+gParticleSparkHandlers:
+	.incbin "baserom.gba", 0x3AF690, 0x40
+
+	.global gParticleSparkOffsets
+gParticleSparkOffsets:
+	.incbin "baserom.gba", 0x3AF6D0, 0x10
+
+	.global gParticleShotHandlers
+gParticleShotHandlers:
+	.incbin "baserom.gba", 0x3AF6E0, 0x40
+
+	.global gParticleSweepHandlers
+gParticleSweepHandlers:
+	.incbin "baserom.gba", 0x3AF720, 0x20
+
+	.global gBattleSeqCommands
+gBattleSeqCommands:
+	.incbin "baserom.gba", 0x3AF740, 0x148
+
+	.global gBattleSeqLegSoundSets
+gBattleSeqLegSoundSets:
+	.incbin "baserom.gba", 0x3AF888, 0x4
+
+	.global gBattleSeqEffectGfx
+gBattleSeqEffectGfx:
+	.incbin "baserom.gba", 0x3AF88C, 0xC0
+
+	.global gBattleSeqEffectSetPos
+gBattleSeqEffectSetPos:
+	.incbin "baserom.gba", 0x3AF94C, 0x10
+
+	.global gBattleSeqEwramGfx
+gBattleSeqEwramGfx:
+	.incbin "baserom.gba", 0x3AF95C, 0x10
+
+	.global gBattleSeqSpriteHandlers
+gBattleSeqSpriteHandlers:
+	.incbin "baserom.gba", 0x3AF96C, 0x140
+
+	.global gBattleBg3ParallaxShift
+gBattleBg3ParallaxShift:
+	.incbin "baserom.gba", 0x3AFAAC, 0xC
+
+	.global gBattleSeqWaveOffsets
+gBattleSeqWaveOffsets:
+	.incbin "baserom.gba", 0x3AFAB8, 0x40
+
+	.global gLinkRobattleHandlers
+gLinkRobattleHandlers:
+	.incbin "baserom.gba", 0x3AFAF8, 0x180
+
+	.global gLinkBattlefields
+gLinkBattlefields:
+	.incbin "baserom.gba", 0x3AFC78, 0x20
+
+	.global gPrizeGameSlotSets
+gPrizeGameSlotSets:
+	.incbin "baserom.gba", 0x3AFC98, 0x60
+
+	.global gPrizeGameBotPicks
+gPrizeGameBotPicks:
+	.incbin "baserom.gba", 0x3AFCF8, 0x10
+
+	.global gPortraitTiles
+gPortraitTiles:
+	.incbin "baserom.gba", 0x3AFD08, 0x18C0
+
+	.global gPortraitPalettes
+gPortraitPalettes:
+	.incbin "baserom.gba", 0x3B15C8, 0x2C0
+
+	.global gMedabotPartSpriteTiles
+gMedabotPartSpriteTiles:
+	.incbin "baserom.gba", 0x3B1888, 0xB70
+
+	.global gBattlefieldTilesets
+gBattlefieldTilesets:
+	.incbin "baserom.gba", 0x3B23F8, 0xB0
+
+	.global gBattlefieldGraphics
+gBattlefieldGraphics:
+	.incbin "baserom.gba", 0x3B24A8, 0xDC
+
+	.global gGfxListData
+gGfxListData:
+	.incbin "baserom.gba", 0x3B2584, 0x218
+
+	.global gMessageStates
+gMessageStates:
+	.incbin "baserom.gba", 0x3B279C, 0x24
+
+	.global gMessageEndModes
+gMessageEndModes:
+	.incbin "baserom.gba", 0x3B27C0, 0x14
+
+	.global gMessageEndWaitCloseSteps
+gMessageEndWaitCloseSteps:
+	.incbin "baserom.gba", 0x3B27D4, 0x18
+
+	.global gMessageEndCloseSteps
+gMessageEndCloseSteps:
+	.incbin "baserom.gba", 0x3B27EC, 0x18
+
+	.global gMessageEndWaitKeepSteps
+gMessageEndWaitKeepSteps:
+	.incbin "baserom.gba", 0x3B2804, 0x4
+
+	.global gMessageEndWaitClearSteps
+gMessageEndWaitClearSteps:
+	.incbin "baserom.gba", 0x3B2808, 0x8
+
+	.global gMessageEndKeepSteps
+gMessageEndKeepSteps:
+	.incbin "baserom.gba", 0x3B2810, 0x4
+
+	.global gChoiceMenuStates
+gChoiceMenuStates:
+	.incbin "baserom.gba", 0x3B2814, 0x38
+
+	.global gMessageCloseSteps
+gMessageCloseSteps:
+	.incbin "baserom.gba", 0x3B284C, 0x18
+
+	.global gMessageCloseQuickSteps
+gMessageCloseQuickSteps:
+	.incbin "baserom.gba", 0x3B2864, 0x8
+
+	.global gReplayRandomBytes
+gReplayRandomBytes:
+	.incbin "baserom.gba", 0x3B286C, 0x100
+
+	.global gLegWalkFrames
+gLegWalkFrames:
+	.incbin "baserom.gba", 0x3B296C, 0x4
+
+	.global gPlayerFormSpriteSets
+gPlayerFormSpriteSets:
+	.incbin "baserom.gba", 0x3B2970, 0x2170
+
+	.global gUiTilemaps
+gUiTilemaps:
+
+	.global gUiTilemapsNamed
+gUiTilemapsNamed:
+	.incbin "baserom.gba", 0x3B4AE0, 0x1A8
+
+	.global gFontWidths
+gFontWidths:
+	.incbin "baserom.gba", 0x3B4C88, 0x200
+
+	.global gAltFontWidths
+gAltFontWidths:
+	.incbin "baserom.gba", 0x3B4E88, 0x570
+
+	.global gMenuMessages
+gMenuMessages:
+	.incbin "baserom.gba", 0x3B53F8, 0xB88
+
+	.global gBattleSpriteAnimScripts
+gBattleSpriteAnimScripts:
+	.incbin "baserom.gba", 0x3B5F80, 0x90
+
+	.global gStaggeredSpriteAnimScripts
+gStaggeredSpriteAnimScripts:
+	.incbin "baserom.gba", 0x3B6010, 0x148
+
+	.global gMedalRecords
+gMedalRecords:
+	.incbin "baserom.gba", 0x3B6158, 0x2B8
+
+	.global gMedalNames
+gMedalNames:
+	.incbin "baserom.gba", 0x3B6410, 0x15C
+
+	.global gAttributeNames
+gAttributeNames:
+	.incbin "baserom.gba", 0x3B656C, 0x45C
+
+	.global gAttributeHelpMessages
+gAttributeHelpMessages:
+	.incbin "baserom.gba", 0x3B69C8, 0x45C
+
+	.global gAbilityHelpMessages
+gAbilityHelpMessages:
+	.incbin "baserom.gba", 0x3B6E24, 0xA4
+
+	.global gSkillTypeNames
+gSkillTypeNames:
+	.incbin "baserom.gba", 0x3B6EC8, 0x1E4
+
+	.global gSkillTypeHelpMessages
+gSkillTypeHelpMessages:
+	.incbin "baserom.gba", 0x3B70AC, 0x28C
+
+	.global gMedaforceNames
+gMedaforceNames:
+	.incbin "baserom.gba", 0x3B7338, 0x8C8
+
+	.global gMedaforceDescMessages
+gMedaforceDescMessages:
+	.incbin "baserom.gba", 0x3B7C00, 0xD4
+
+	.global gMedaforceRecords
+gMedaforceRecords:
+	.incbin "baserom.gba", 0x3B7CD4, 0x138
+
+	.global gMedalMedaforceIds
+gMedalMedaforceIds:
+	.incbin "baserom.gba", 0x3B7E0C, 0xB0
+
+	.global gHelpCursorLayouts
+gHelpCursorLayouts:
+	.incbin "baserom.gba", 0x3B7EBC, 0x84
+
+	.global gMedaforceTypeHelpMessages
+gMedaforceTypeHelpMessages:
+	.incbin "baserom.gba", 0x3B7F40, 0x230
+
+	.global gMedaforceSkillHelpMessages
+gMedaforceSkillHelpMessages:
+	.incbin "baserom.gba", 0x3B8170, 0xEC
+
+	.global gRotationActionMessages
+gRotationActionMessages:
+	.incbin "baserom.gba", 0x3B825C, 0x20
+
+	.global gMedapartData
+gMedapartData:
+	.incbin "baserom.gba", 0x3B827C, 0x225C
+
+	.global gMedabotNames
+gMedabotNames:
+	.incbin "baserom.gba", 0x3BA4D8, 0x14F4
+
+	.global gMedapartNames
+gMedapartNames:
+	.incbin "baserom.gba", 0x3BB9CC, 0x1EB8
+
+	.global gMedapartsHelpMessages
+gMedapartsHelpMessages:
+	.incbin "baserom.gba", 0x3BD884, 0xB60
+
+	.global gMedapartDetailHelpMessages
+gMedapartDetailHelpMessages:
+	.incbin "baserom.gba", 0x3BE3E4, 0x304
+
+	.global gSkillNames
+gSkillNames:
+	.incbin "baserom.gba", 0x3BE6E8, 0x244
+
+	.global gMedapartLegDetailHelpMessages
+gMedapartLegDetailHelpMessages:
+	.incbin "baserom.gba", 0x3BE92C, 0x50
+
+	.global gLegTypeNames
+gLegTypeNames:
+	.incbin "baserom.gba", 0x3BE97C, 0x6C
+
+	.global gBattlefieldNames
+gBattlefieldNames:
+	.incbin "baserom.gba", 0x3BE9E8, 0x2C
+
+	.global gMedabotSpritePalettes
+gMedabotSpritePalettes:
+	.incbin "baserom.gba", 0x3BEA14, 0x7C
+
+	.global gAreaBattleSettings
+gAreaBattleSettings:
+	.incbin "baserom.gba", 0x3BEA90, 0x600
+
+	.global gAreaRandomEncounters
+gAreaRandomEncounters:
+	.incbin "baserom.gba", 0x3BF090, 0x2970
+
+	.global gEncounterSetups
+gEncounterSetups:
+	.incbin "baserom.gba", 0x3C1A00, 0x11BC
+
+	.global gOpponentPreBattleMessages
+gOpponentPreBattleMessages:
+	.incbin "baserom.gba", 0x3C2BBC, 0xDC8
+
+	.global gOpponentAfterBattleMessages
+gOpponentAfterBattleMessages:
+	.incbin "baserom.gba", 0x3C3984, 0x180
+
+	.global gBattlefieldParams
+gBattlefieldParams:
+	.incbin "baserom.gba", 0x3C3B04, 0x58
+
+	.global gBattlefieldEffectParams
+gBattlefieldEffectParams:
+	.incbin "baserom.gba", 0x3C3B5C, 0x3DC
+
+	.global gOpponentNames
+gOpponentNames:
+	.incbin "baserom.gba", 0x3C3F38, 0x180
+
+	.global gBattlefieldAnimTileCounts
+gBattlefieldAnimTileCounts:
+	.incbin "baserom.gba", 0x3C40B8, 0xB
+
+	.global gBattlefieldAnimFrames
+gBattlefieldAnimFrames:
+	.incbin "baserom.gba", 0x3C40C3, 0x5A9
+
+	.global gCommandRingNames
+gCommandRingNames:
+	.incbin "baserom.gba", 0x3C466C, 0x3A4
+
+	.global gBattleMenuTexts
+gBattleMenuTexts:
+	.incbin "baserom.gba", 0x3C4A10, 0x200
+
+	.global gTerrainMoveDelays
+gTerrainMoveDelays:
+	.incbin "baserom.gba", 0x3C4C10, 0x50
+
+	.global gStatusSpriteParams
+gStatusSpriteParams:
+	.incbin "baserom.gba", 0x3C4C60, 0x28
+
+	.global gBuffSpriteParams
+gBuffSpriteParams:
+	.incbin "baserom.gba", 0x3C4C88, 0x193C
+
+	.global gBattleMessages
+gBattleMessages:
+	.incbin "baserom.gba", 0x3C65C4, 0x564
+
+	.global gActionScripts
+gActionScripts:
+	.incbin "baserom.gba", 0x3C6B28, 0x210
+
+	.global gActionScriptOperandCounts
+gActionScriptOperandCounts:
+	.incbin "baserom.gba", 0x3C6D38, 0xB0
+
+	.global gPartKindNames
+gPartKindNames:
+	.incbin "baserom.gba", 0x3C6DE8, 0x10
+
+	.global gSpriteMotionSteps
+gSpriteMotionSteps:
+	.incbin "baserom.gba", 0x3C6DF8, 0x3E00
+
+	.global gLegPartPoseSets
+gLegPartPoseSets:
+	.incbin "baserom.gba", 0x3CABF8, 0x33EC
+
+	.global gBattleSeqScripts
+gBattleSeqScripts:
+	.incbin "baserom.gba", 0x3CDFE4, 0x210
+
+	.global gBattleSeqOperandCounts
+gBattleSeqOperandCounts:
+	.incbin "baserom.gba", 0x3CE1F4, 0x28C
+
+	.global gGfxLists
+gGfxLists:
+	.incbin "baserom.gba", 0x3CE480, 0x7F4
+
+	.global gBattleSeqTileAnims
+gBattleSeqTileAnims:
+	.incbin "baserom.gba", 0x3CEC74, 0x94
+
+	.global gChangeHeadPartIds
+gChangeHeadPartIds:
+	.incbin "baserom.gba", 0x3CED08, 0x80
+
+	.global gChangeRightArmPartIds
+gChangeRightArmPartIds:
+	.incbin "baserom.gba", 0x3CED88, 0x80
+
+	.global gChangeLeftArmPartIds
+gChangeLeftArmPartIds:
+	.incbin "baserom.gba", 0x3CEE08, 0x80
+
+	.global gItrpChangeHeadPartIds
+gItrpChangeHeadPartIds:
+	.incbin "baserom.gba", 0x3CEE88, 0x40
+
+	.global gItrpChangeRightArmPartIds
+gItrpChangeRightArmPartIds:
+	.incbin "baserom.gba", 0x3CEEC8, 0x40
+
+	.global gItrpChangeLeftArmPartIds
+gItrpChangeLeftArmPartIds:
+	.incbin "baserom.gba", 0x3CEF08, 0x40
+
+	.global gAttackChangeHeadPartIds
+gAttackChangeHeadPartIds:
+	.incbin "baserom.gba", 0x3CEF48, 0x40
+
+	.global gAttackChangeRightArmPartIds
+gAttackChangeRightArmPartIds:
+	.incbin "baserom.gba", 0x3CEF88, 0x40
+
+	.global gAttackChangeLeftArmPartIds
+gAttackChangeLeftArmPartIds:
+	.incbin "baserom.gba", 0x3CEFC8, 0x40
+
+	.global gDefenseChangeHeadPartIds
+gDefenseChangeHeadPartIds:
+	.incbin "baserom.gba", 0x3CF008, 0x40
+
+	.global gDefenseChangeRightArmPartIds
+gDefenseChangeRightArmPartIds:
+	.incbin "baserom.gba", 0x3CF048, 0x40
+
+	.global gDefenseChangeLeftArmPartIds
+gDefenseChangeLeftArmPartIds:
+	.incbin "baserom.gba", 0x3CF088, 0x40
+
+	.global gHealChangeHeadPartIds
+gHealChangeHeadPartIds:
+	.incbin "baserom.gba", 0x3CF0C8, 0x40
+
+	.global gHealChangeRightArmPartIds
+gHealChangeRightArmPartIds:
+	.incbin "baserom.gba", 0x3CF108, 0x40
+
+	.global gHealChangeLeftArmPartIds
+gHealChangeLeftArmPartIds:
+	.incbin "baserom.gba", 0x3CF148, 0x40
+
+	.global gUnk_083CF188
+gUnk_083CF188:
+	.incbin "baserom.gba", 0x3CF188, 0x228
+
+	.global gLinkMessages
+gLinkMessages:
+	.incbin "baserom.gba", 0x3CF3B0, 0x2848
+
+	.global gMedabotSpriteNodeDescs
+gMedabotSpriteNodeDescs:
+	.incbin "baserom.gba", 0x3D1BF8, 0xC8
+
+	.global gPoseKeyframeAngles
+gPoseKeyframeAngles:
+	.incbin "baserom.gba", 0x3D1CC0, 0xEC
+
+	.global gPoseKeyframeOffsets
+gPoseKeyframeOffsets:
+	.incbin "baserom.gba", 0x3D1DAC, 0xEC
+
+	.global gPoseKeyframeEnds
+gPoseKeyframeEnds:
+	.incbin "baserom.gba", 0x3D1E98, 0xEC
+
+	.global gFieldModeStates
+gFieldModeStates:
+	.incbin "baserom.gba", 0x3D1F84, 0x28
+
+	.global gFieldSubStates
+gFieldSubStates:
+	.incbin "baserom.gba", 0x3D1FAC, 0x100
+
+	.global gMapScriptCommands
+gMapScriptCommands:
+	.incbin "baserom.gba", 0x3D20AC, 0x400
+
+	.global gOppositeDirection
+gOppositeDirection:
+	.incbin "baserom.gba", 0x3D24AC, 0x4
+
+	.global gMapScriptUpdates
+gMapScriptUpdates:
+	.incbin "baserom.gba", 0x3D24B0, 0x400
+
+	.global gPlayerFormScriptSpeedIds
+gPlayerFormScriptSpeedIds:
+	.incbin "baserom.gba", 0x3D28B0, 0x10
+
+	.global gWalkSpeedFactors
+gWalkSpeedFactors:
+	.incbin "baserom.gba", 0x3D28C0, 0x3
+
+	.global gDpadRemaps
+gDpadRemaps:
+	.incbin "baserom.gba", 0x3D28C3, 0x40
+
+	.global gNpcFacingTowardPlayer
+gNpcFacingTowardPlayer:
+	.incbin "baserom.gba", 0x3D2903, 0x5
+
+	.global gPlayerFormSpeedIds
+gPlayerFormSpeedIds:
+	.incbin "baserom.gba", 0x3D2908, 0x10
+
+	.global gFormTileActions
+gFormTileActions:
+	.incbin "baserom.gba", 0x3D2918, 0x80
+
+	.global gScriptPlayerForms
+gScriptPlayerForms:
+	.incbin "baserom.gba", 0x3D2998, 0xE
+
+	.global gPlayerFormSpriteSheets
+gPlayerFormSpriteSheets:
+	.incbin "baserom.gba", 0x3D29A6, 0x10
+
+	.global gEventPictureSongs
+gEventPictureSongs:
+	.incbin "baserom.gba", 0x3D29B6, 0x30
+
+	.global gWarpSoundEffects
+gWarpSoundEffects:
+	.incbin "baserom.gba", 0x3D29E6, 0x5
+
+	.global gAreaTypes
+gAreaTypes:
+	.incbin "baserom.gba", 0x3D29EB, 0xC0
+
+	.global gTownMapWarpAreas
+gTownMapWarpAreas:
+	.incbin "baserom.gba", 0x3D2AAB, 0x9
+
+	.global gTownMapWarpPositions
+gTownMapWarpPositions:
+	.incbin "baserom.gba", 0x3D2AB4, 0x24
+
+	.global gTeleportWarpArea
+gTeleportWarpArea:
+	.incbin "baserom.gba", 0x3D2AD8, 0x1
+
+	.global gTeleportWarpPosition
+gTeleportWarpPosition:
+	.incbin "baserom.gba", 0x3D2AD9, 0x4
+
+	.global gSpriteSheetBlendKinds
+gSpriteSheetBlendKinds:
+	.incbin "baserom.gba", 0x3D2ADD, 0xB0
+
+	.global gSpriteSheetHasShadow
+gSpriteSheetHasShadow:
+	.incbin "baserom.gba", 0x3D2B8D, 0xB0
+
+	.global gSpriteSheetPreviewKinds
+gSpriteSheetPreviewKinds:
+	.incbin "baserom.gba", 0x3D2C3D, 0x173
+
+	.global gFieldEffectModels
+gFieldEffectModels:
+	.incbin "baserom.gba", 0x3D2DB0, 0x2FD4
+
+	.global gFieldEffectScripts
+gFieldEffectScripts:
+	.incbin "baserom.gba", 0x3D5D84, 0x84
+
+	.global gVehicleMenuStates
+gVehicleMenuStates:
+	.incbin "baserom.gba", 0x3D5E08, 0x124
+
+	.global gVehicleMenuCursorRows
+gVehicleMenuCursorRows:
+	.incbin "baserom.gba", 0x3D5F2C, 0x4
+
+	.global gVehicleMenuWindowTilemap
+gVehicleMenuWindowTilemap:
+	.incbin "baserom.gba", 0x3D5F30, 0x140
+
+	.global gFieldDebugEventValues
+gFieldDebugEventValues:
+	.incbin "baserom.gba", 0x3D6070, 0xC
+
+	.global gFieldDebugMessageValues
+gFieldDebugMessageValues:
+	.incbin "baserom.gba", 0x3D607C, 0xC
+
+	.global gFieldDebugSoundValues
+gFieldDebugSoundValues:
+	.incbin "baserom.gba", 0x3D6088, 0x54
+
+	.global gFieldDebugPageValues
+gFieldDebugPageValues:
+	.incbin "baserom.gba", 0x3D60DC, 0x8C4
+
+	.global gJumpArcTable
+gJumpArcTable:
+	.incbin "baserom.gba", 0x3D69A0, 0x200
+
+	.global gCosTableQ8
+gCosTableQ8:
+	.incbin "baserom.gba", 0x3D6BA0, 0x300
+
+	.global gCosTableF32
+gCosTableF32:
+	.incbin "baserom.gba", 0x3D6EA0, 0x400
+
+	.global gSinTableF32
+gSinTableF32:
+	.incbin "baserom.gba", 0x3D72A0, 0x20954
+
+	.global gSpriteAnimScripts
+gSpriteAnimScripts:
+	.incbin "baserom.gba", 0x3F7BF4, 0x400
+
+	.global gRandomBytes
+gRandomBytes:
+	.incbin "baserom.gba", 0x3F7FF4, 0x100
+
+	.global gFieldSpriteTiles
+gFieldSpriteTiles:
+	.incbin "baserom.gba", 0x3F80F4, 0x540
+
+	.global gFieldSpritePalettes
+gFieldSpritePalettes:
+	.incbin "baserom.gba", 0x3F8634, 0x540
+
+	.global gAreaMapSizes
+gAreaMapSizes:
+	.incbin "baserom.gba", 0x3F8B74, 0x180
+
+	.global gAreaBgTiles
+gAreaBgTiles:
+	.incbin "baserom.gba", 0x3F8CF4, 0x300
+
+	.global gAreaAnimBgTiles
+gAreaAnimBgTiles:
+	.incbin "baserom.gba", 0x3F8FF4, 0x300
+
+	.global gAreaBgTilemaps
+gAreaBgTilemaps:
+	.incbin "baserom.gba", 0x3F92F4, 0x900
+
+	.global gAreaBgPalettes
+gAreaBgPalettes:
+	.incbin "baserom.gba", 0x3F9BF4, 0xA9B4
+
+	.global gAreaCollisionMaps
+gAreaCollisionMaps:
+	.incbin "baserom.gba", 0x4045A8, 0x514C
+
+	.global gAreaTileAnims
+gAreaTileAnims:
+	.incbin "baserom.gba", 0x4096F4, 0x6400
+
+	.global gAreaExits
+gAreaExits:
+	.incbin "baserom.gba", 0x40FAF4, 0x2260
+
+	.global gRoomExitMessages
+gRoomExitMessages:
+	.incbin "baserom.gba", 0x411D54, 0x13C0
+
+	.global gAreaWarps
+gAreaWarps:
+	.incbin "baserom.gba", 0x413114, 0x400
+
+	.global gAreaSpriteSheetIds
+gAreaSpriteSheetIds:
+	.incbin "baserom.gba", 0x413514, 0xE80
+
+	.global gSpriteSheetVariantTables
+gSpriteSheetVariantTables:
+	.incbin "baserom.gba", 0x414394, 0x5D4
+
+	.global gTextTable
+gTextTable:
+	.incbin "baserom.gba", 0x414968, 0x69AF4
+
+	.global gTextBankTables
+gTextBankTables:
+	.incbin "baserom.gba", 0x47E45C, 0x468
+
+	.global gScriptItemMessages
+gScriptItemMessages:
+	.incbin "baserom.gba", 0x47E8C4, 0x84
+
+	.global gDpadRemapFloorTiles
+gDpadRemapFloorTiles:
+	.incbin "baserom.gba", 0x47E948, 0x238
+
+	.global gAreaSongs
+gAreaSongs:
+	.incbin "baserom.gba", 0x47EB80, 0xC0
+
+	.global gFieldEffectObjPalettes
+gFieldEffectObjPalettes:
+	.incbin "baserom.gba", 0x47EC40, 0x80
+
+	.global gFieldEffectObjTiles
+gFieldEffectObjTiles:
+	.incbin "baserom.gba", 0x47ECC0, 0x1340

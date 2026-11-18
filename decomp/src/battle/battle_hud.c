@@ -1,0 +1,205 @@
+// Battle screen drawing: BG layers, Medabot part sprites and positions, portraits, the name sprites, side
+// panels and the Medaforce gauge (bar and value). Called from battle/robattle and the battle menus.
+
+#include "global.h"
+#include "constants/sprites.h"
+#include "constants/medaparts.h"
+
+void battle_hud_load_bg3_tilemap(void) {
+    set_tilemap_and_decompress_bg(14, 3, gBattleBg3TilemapLz, REG_BG3CNT, 0x200);
+}
+
+void draw_battle_bot_portraits(void) {
+    u32 i;
+
+    for (i = 0; i <= 2; i++) {
+        if (gBattleBots[i].teamState)
+            draw_tile_block(2, 2, 2, i * 3 + 4, REG_BG3CNT, (gBattleBots[i].parts[3].data[1] << 2) + 0x8084);
+        else
+            draw_tile_block(2, 2, 2, i * 3 + 4, REG_BG3CNT, 0x8230);
+    }
+    for (i = 0; i <= 2; i++) {
+        if (gBattleBots[i + 3].teamState)
+            draw_tile_block(2, 2, 26, i * 3 + 4, REG_BG3CNT, (gBattleBots[i + 3].parts[3].data[1] << 2) + 0x8084);
+        else
+            draw_tile_block(2, 2, 26, i * 3 + 4, REG_BG3CNT, 0x8230);
+    }
+}
+
+void get_bot_part_effective_values(u32 bot, u8 *out) {
+    if (gBattleBots[bot].parts[0].armor)
+        *out++ = gBattleBots[bot].parts[0].partId;
+    else
+        *out++ = gBattleBots[bot].gender + MEDAPART_BARE_TINPET;
+    if (gBattleBots[bot].parts[1].armor)
+        *out++ = gBattleBots[bot].parts[1].partId;
+    else
+        *out++ = gBattleBots[bot].gender + MEDAPART_BARE_TINPET;
+    if (gBattleBots[bot].parts[2].armor)
+        *out++ = gBattleBots[bot].parts[2].partId;
+    else
+        *out++ = gBattleBots[bot].gender + MEDAPART_BARE_TINPET;
+    if (gBattleBots[bot].parts[3].armor)
+        *out = gBattleBots[bot].parts[3].partId;
+    else
+        *out = gBattleBots[bot].gender + MEDAPART_BARE_TINPET;
+}
+
+void load_bot_part_sprite(u32 rec) {
+    u8 *part_ids = gBattleWork.partIds;
+    get_bot_part_effective_values(rec, part_ids);
+    load_medabot_part_tiles(part_ids[0], part_ids[1], part_ids[2], part_ids[3], rec);
+}
+
+void load_all_bot_part_sprites(void) {
+    u32 i;
+    for (i = 0; i <= 5; i++) {
+        if (gBattleBots[i].teamState)
+            load_bot_part_sprite(i);
+    }
+}
+
+// Team sprites face right, opponents left; flag bit 2 of stateFlags turns a Medabot round.
+u32 bot_sprite_is_flipped(u32 rec) {
+    if (rec <= 2) {
+        if (gBattleBots[rec].stateFlags & 4)
+            return 1;
+        return 0;
+    }
+    if (gBattleBots[rec].stateFlags & 4)
+        return 0;
+    return 1;
+}
+
+static void init_battle_bot_sprite(u32 rec, u32 x, u32 y) {
+    u8 *part_ids = gBattleWork.partIds;
+    u32 flip;
+    get_bot_part_effective_values(rec, part_ids);
+    flip = bot_sprite_is_flipped(rec);
+    init_battle_medabot_sprites(part_ids[0], part_ids[1], part_ids[2], part_ids[3], rec, BOT_SPRITE_HEAD(rec), x, y,
+                                flip, gBattleWork.battlefieldParams[3] + 2, BOT_SPRITE_HEAD(rec));
+}
+
+void setup_all_battle_bot_sprite_positions(void) {
+    u32 i;
+    for (i = 0; i <= 5; i++) {
+        if (gBattleBots[i].teamState) {
+            u32 x = 200;
+            if (i <= 2)
+                x = 40;
+            init_battle_bot_sprite(i, x, (i % 3) * 24 + 36);
+        }
+    }
+}
+
+void setup_battle_bot_sprite_group(u32 rec, u32 x, u32 y) {
+    u8 *part_ids = gBattleWork.partIds;
+    u32 flip;
+    get_bot_part_effective_values(rec, part_ids);
+    flip = bot_sprite_is_flipped(rec);
+    setup_battle_sprite_group(part_ids[0], part_ids[1], part_ids[2], part_ids[3], rec, BOT_SPRITE_HEAD(rec), x, y, flip,
+                              gBattleWork.battlefieldParams[3] + 2, BOT_SPRITE_HEAD(rec));
+    gSpriteEntries[BOT_SPRITE_RIGHT_ARM(rec)].flags &= (u16)~SPRITE_FLAG_AFFINE;
+    gSpriteEntries[BOT_SPRITE_LEFT_ARM(rec)].flags &= (u16)~SPRITE_FLAG_AFFINE;
+    gSpriteEntries[BOT_SPRITE_RIGHT_ARM(rec)].angle = 0;
+    gSpriteEntries[BOT_SPRITE_LEFT_ARM(rec)].angle = 0;
+}
+
+void load_battle_bg_layers(void) {
+    set_tilemap_and_decompress_bg(0, 13, gLeftBotPanelTilemap, REG_BG1CNT, 0x258);
+    set_tilemap_and_decompress_bg(0, 17, gMedaforceGaugeFrameTilemap, REG_BG1CNT, 0x210);
+    set_tilemap_and_decompress_bg(12, 15, gActionSelectPanelTilemap, REG_BG1CNT, 0x230);
+    set_tilemap_and_decompress_bg(20, 16, gActionSelectSidePanelTilemap, REG_BG1CNT, 0x240);
+}
+
+void decompress_two_bg1_layers(void) {
+    set_tilemap_and_decompress_bg(12, 21, gActionSelectPanelTilemap, REG_BG1CNT, 0x230);
+    set_tilemap_and_decompress_bg(20, 21, gActionSelectSidePanelTilemap, REG_BG1CNT, 0x240);
+}
+
+void render_bot_name_sprites(u32 rec) {
+    if (rec <= 2) {
+        disable_sprites(10, 10);
+        render_text_sprites_at(gBattleBots[rec].medal.name, 10, 1, 14, 10, 15, 0, 1);
+    } else {
+        disable_sprites(20, 13);
+        render_text_sprites_at(gBattleBots[rec].medal.name, 20, 19, 14, 10, 15, 0, 1);
+    }
+}
+
+void draw_battle_panel_left_a(u32 rec) {
+    if (rec <= 2)
+        draw_tile_block(3, 1, 1, 18, REG_BG1CNT, 0xD20A);
+    else
+        draw_tile_block(3, 1, 21, 18, REG_BG1CNT, 0xD20A);
+}
+
+void draw_battle_panel_left_b(u32 rec) {
+    if (rec <= 2)
+        draw_tile_block(3, 1, 1, 18, REG_BG1CNT, 0xD20D);
+    else
+        draw_tile_block(3, 1, 21, 18, REG_BG1CNT, 0xD20D);
+}
+
+void draw_medaforce_gauge_bar(u32 rec) {
+    u32 x = 0;
+    u32 i, full, partial;
+
+    if (rec <= 2) {
+        full = scale_to_bar_fill(64, 80, gBattleBots[rec].medaforceGauge);
+        partial = full & 0xFFFF;
+        full >>= 16;
+        if (gBattleBots[rec].medaforceGauge != 0 && full == 0 && partial == 0)
+            partial = 1;
+        for (i = 0; i < full; i++) {
+            draw_tile_block(1, 1, x + 1, 17, REG_BG1CNT, 0xD208);
+            x++;
+        }
+        if (partial) {
+            draw_tile_block(1, 1, x + 1, 17, REG_BG1CNT, 0xD200 + partial);
+            x++;
+        }
+        for (i = x; i <= 7; i++) {
+            draw_tile_block(1, 1, x + 1, 17, REG_BG1CNT, 0xD200);
+            x++;
+        }
+    } else {
+        full = scale_to_bar_fill(64, 80, gBattleBots[rec].medaforceGauge);
+        partial = full & 0xFFFF;
+        full >>= 16;
+        if (gBattleBots[rec].medaforceGauge != 0 && full == 0 && partial == 0)
+            partial = 1;
+        for (i = 0; i < full; i++) {
+            draw_tile_block(1, 1, x + 21, 17, REG_BG1CNT, 0xD208);
+            x++;
+        }
+        if (partial) {
+            draw_tile_block(1, 1, x + 21, 17, REG_BG1CNT, 0xD200 + partial);
+            x++;
+        }
+        for (i = x; i <= 7; i++) {
+            draw_tile_block(1, 1, x + 21, 17, REG_BG1CNT, 0xD200);
+            x++;
+        }
+    }
+}
+
+u32 scale_to_bar_fill(u32 value, u32 max, u32 bar_len) {
+    u32 scaled = (float)value / (float)max * (float)bar_len;
+    u32 ret = ((scaled >> 3) << 16) | (scaled & 7);
+    if (bar_len != 0 && ret == 0)
+        ret = 1;
+    return ret;
+}
+
+void draw_medaforce_gauge_value(u32 rec) {
+    if (rec <= 2) {
+        draw_number_bgcnt(gBattleBots[rec].medaforceGauge, 4, 18, 2, REG_BG1CNT, 0xD220);
+        draw_tile_block(1, 1, 6, 18, REG_BG1CNT, 0xD21A);
+        draw_number_bgcnt(80, 7, 18, 2, REG_BG1CNT, 0xD220);
+    } else {
+        draw_number_bgcnt(gBattleBots[rec].medaforceGauge, 24, 18, 2, REG_BG1CNT, 0xD220);
+        draw_tile_block(1, 1, 26, 18, REG_BG1CNT, 0xD21A);
+        draw_number_bgcnt(80, 27, 18, 2, REG_BG1CNT, 0xD220);
+    }
+}

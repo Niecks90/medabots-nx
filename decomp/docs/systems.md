@@ -1,0 +1,181 @@
+# How the game is put together
+
+This page gives an overview of the game's systems: the main loop, the state machine that picks which screen
+runs, and which systems call which. The [README](../README.md) has the folder layout. Names marked "guess" in
+the source are still unconfirmed.
+
+## The main loop and the state machine
+
+`AgbMain` (`src/engine/main.c`) sets up the hardware, interrupts, the sound engine and the serial link, then
+runs one iteration per VBlank: `read_keys`, the play-time counter, the link status, then the handler of the
+current **game mode**, `gGameModeHandlers[gGameMode]`, then the OAM copy and the outgoing link packet.
+
+The current screen is picked by three bytes:
+
+* `gGameMode`: which top-level dispatcher runs (0-3, below);
+* `gGameState`: the screen inside that mode (each mode has a table of `*_update` functions);
+* `gGameSubState`: the step inside that screen (each screen has its own table of sub-state handlers).
+
+So every screen module has the same shape: an `*_update` dispatcher that calls
+`table[gGameSubState]()`, the sub-state handlers, and the drawing helpers they share. Screens change mode by
+writing the three bytes directly, through `switch_game_mode` (`src/field/field_mode.c`, used by field scripts
+to start Robattles, shops, minigames and cutscenes), or through the mode-3 scene transitions, which store the
+next mode / state / sub-state and switch once the fade is done.
+
+| mode | dispatcher | screens |
+|---|---|---|
+| 0 | `src/engine/game_state.c` | menus and Robattles: test screen (0), field menu (1), Medawatch (2), Medabots (3), Medals (4), Medaparts (5), Robattle intro / results (6), the Robattle (7-9), link Robattle (10), debug menu (63) |
+| 1 | `src/field/field_mode.c` | the field: walking, map scripts, the vehicle menu (guess), the field debug pages |
+| 2 | `src/title/title_menu.c` | title menu, item screen, save, name entry, TEST MODE, game over, save lost, Town Map, shops, link menu and trades, text scroll, Medal level-up |
+| 3 | `src/engine/scene_transition.c` | boot logos (0), intro (1), title screen (2), event picture (3), race (4), bomb game (5), Medabots Weekly (6) |
+
+The game boots into mode 3 state 0 (boot logos), which runs into the intro and the title screen; START on the
+title screen goes to the mode-2 title menu, and starting or loading a game enters the field (mode 1).
+
+## Systems
+
+**Engine** (`src/engine/`). Everything the screens share: the main loop and interrupts, LZ decompression,
+BG / tilemap / palette / OAM helpers, palette blends and fades, the sprite slot table and sprite trees, random
+numbers, fixed-point 3-D matrices and the mode-0 and mode-3 dispatchers. It calls nothing above it except
+through the handler tables.
+
+**Field** (`src/field/`). Mode 1. `field_update` runs the field sub-states; the map script interpreter
+(`map_script.c`) runs one command per step and `map_script_update.c` runs the per-frame part of commands that
+take several frames. Script commands move script sprites, change areas, give items and money
+(`script_helpers.c`), and start other screens through `switch_game_mode`: Robattles (battle), shops, cutscenes
+and minigames. The player's walk, warps and map objects live in `player_walk.c`, `field_walk.c` and
+`map_objects.c`.
+
+Areas: `gFieldWork.area_id` indexes every per-area table (warps, collision, tiles, songs, sprite sheets,
+battle settings). `constants/areas.h` names the ids identified by playing the game (`AREA_LAB` = 23, where a
+new game starts). One area, `AREA_DPAD_REMAP_ROOM`, has floor tiles that reverse or rotate the D-pad
+(`remap_dpad_by_floor_tile`).
+
+Map objects: each area places up to 64 objects in `gFieldWork.objects`. The top nibble of `event` is the kind
+(`constants/map_objects.h`): people (`MAP_OBJ_NPC`) turn to Ikki when talked to; intercoms, displays and
+signs (`MAP_OBJ_EXAMINE`) are talked to without turning, so a gate intercom is used by facing its post, not the
+gate; door and scene tiles (`MAP_OBJ_STEP`) run their event when Ikki steps on them. The low 12 bits are the
+event id, which is both the map script to run and the event flag that hides the object once set.
+
+Event flags and counters: every event id has a nibble in `gEventFlags` (`map_objects.c`): one flag bit and a
+3-bit counter. A script usually starts with `map_script_cmd_switch_event_counter` (opcode 0x2F), so its own
+counter picks what the person says; story progress is other scripts setting that counter
+(`map_script_cmd_set_event_counter`, 0x17, or `..._increment_event_counter`, 0x18). Example: the man waiting
+by the dog statue at the train station (event 0x439) repeats his line until the Select Corps HQ scene with the
+ex-Rubberobo kid sets his counter to 1; then talking to him brings his girlfriend, and after that Dr. Armond
+challenges Ikki.
+
+Random encounters: at the end of each step `player_walk.c` calls `check_random_encounter`
+(`src/engine/common.c`). An area with a non-zero `gAreaBattleSettings` rate counts steps in
+`gFieldWork.encounter_steps`; from step 17 each step has a 1-in-32 chance, and step 32 always starts a battle. The
+counter is reset by a random battle and by `area_load_encounter_rate`, which runs on area load, on Continue from
+a save (`field_continue_load`) and on some returns from a battle (`field_battle_return_load`); other scripted
+battles leave it as it was. The step that triggers a map event is not counted. `setup_random_encounter_enemies` (`src/battle/prebattle.c`) then picks the team from
+`gAreaRandomEncounters`.
+
+Vehicles and player forms: `gFieldWork.player_form` (`include/constants/player_forms.h`) says how Ikki looks and
+moves: normal, the car, swimming, a disguise (the Rubberobo costume is form 6) or a warp effect. The Vehicle
+menu (`vehicle_menu.c`) turns a key item into a form, but `vehicle_check_usable` only allows it when the team
+has all four parts of the matching Medabot equipped (Landmotor for the Mini S. Wheel, Femjet for the Wings of
+Wind, Aquamar for the Periscope; `include/constants/vehicles.h`). In the car Ikki moves a tile in 8 frames and
+`player_walk.c` skips the encounter roll; loading an area that forbids the car (`area_allows_vehicle`) drops it
+in `map_objects.c`.
+
+**Battle** (`src/battle/`). Mode 0 states 6-9. `prebattle.c` runs the intro before and the results after a
+Robattle; `robattle.c` is the turn loop (command ring, part select, Medaforce select, status screen); state 8
+(`action_phase.c`) picks actions, with the AI in `battle_ai.c`; state 9 (`action_script.c`) runs the action
+scripts, whose opcodes are split by ability type across `action_steps.c`, `defend_heal_skills.c`,
+`support_skills.c`, `interrupt_skills.c` and `medaforce_effects.c`. Damage and stat helpers, sprites, particles
+and the close-up scenes are the rest. Battle uses the engine, text and inventory systems.
+Attacks come in skill pairs that defences single out: optic (Laser / Beam), bomb (Missile / Napalm) and gravity
+(Break / Press). Any intact Cancel Optic / Bomb / Grav part on the target nullifies the matching pair
+(`battle_check_nullified` in `action_calc.c`, checks `is_*_cancelled` in `combat_helpers.c`); Medaforce forms can
+make any skill count as one pair, or turn a pair's damage into healing for the target (`is_*_absorbed`).
+Losing a story Robattle (the Medabot Island jail guards, for one; also on "Time's Up!") leads to
+`MODE2_STATE_GAME_OVER`, and pressing on from there restarts at the mode-3 boot logos. A few story battles
+(Dr. Armond's special-guest match) carry on after a loss instead. A lost Medalink battle (Medashop 2F pods),
+"Time's Up!" included, puts Ikki back on the pod seat with no game over, and the story waits for a win (seen at
+runtime). A pod can hold a queue of opponents: after the Baron, each talk to the bottom-right pod starts the
+next of Select Corps, Sloan, Rubberobo A and Milky, and once all four are beaten it answers "There is no opponent
+available at this time" (seen at runtime). When TIME runs out, `robattle_judge_time_up` (`turn_order.c`) gives the win to the side with fewer
+knocked-out Medabots, then fewer broken parts, then more action points, else a coin flip: a story Robattle
+(the Screws, the Baron) can be won on time without touching the leader. The Medaforce entry of the command ring opens a list whose first, default entry is "Charge MF"; the
+Medal's learned Medaforces follow it (Rokusho's Spiral Bolt is one UP from the default).
+Statuses: `BattleBot.statusType` holds the `SKILL_*` id that set it (`battle_inflict_status`). A Medabot under
+`SKILL_CONFUSION` gets no command ring: `robattle_bot_ready_for_command` lets it pick its own action. A team of
+three confused Medabots (Turnmonkey + Volume10, the Rubberobo kid) plays out on its own until TIME runs out
+(seen at runtime).
+Targets: `ai_pick_bot_targets` (`battle_ai.c`) gives each action part a target through `gAiTargetPickers[skill]`.
+An attack (`ai_target_attack`) picks at random among the opposing Medabots that still have an intact head or arm
+whose action type equals the attacker's Medal Aim (`MedalData.aimSkillType`), and only falls back to any opponent
+when none has one. So a Medabot can draw attacks or avoid them through the action types of its parts: Squidguts'
+Avikings aim at Berserk parts, and a team whose leader carries none sends their Sacrifices to the allies that do
+(seen at runtime). A single-target Medaforce (Spiral Bolt) clears the target and hits the enemy standing nearest
+the centre when it runs (`battle_target_nearest_enemy`, `combat_helpers.c`), not the Aim target.
+In Gillgirl's boss Robattle (Circulis, all Support parts, plus two Gloomegs, all Missile parts) only a Medal
+aiming at Support reaches the leader, and a Shutter part (`SKILL_CANCEL_BOMB`) on each of our Medabots soaks
+the Missiles (seen at runtime). On the command ring, LEFT picks the right arm and RIGHT the left arm.
+A teammate that used Defence / Full Block / Half Block stays ready to guard: it jumps in front of an attack on an
+ally and takes it on its guard part for as long as that part is intact (`guard_find`, `action_steps.c`); Erika's
+two Pretty Primes shield her leader Brass this way, so attacks aimed at Brass only wear down their shields (seen at
+runtime). Terrain: each frame a Medabot's move delay adds `gTerrainMoveDelays[battlefield + (legs skill -
+SKILL_LEGS_AIR) * NUM_BATTLEFIELDS]` (`bot_move_delay_add_terrain`, `bot_movement.c`). On the Woods
+(`BATTLEFIELD_WOODS`, Erika's and Nae's Robattles) two-legged legs add 0, float 6, air / multi-legged / tank / sea
+12 and wheels 18, which is why the guide asks for two-legged legs there.
+
+**Link** (`src/link/`). The serial transfer (`serial.c`, also used by the main loop every frame), link
+Robattles (mode 0 state 10) and the mode-2 link menu, trade and Medal handshake screens.
+
+**Menus** (`src/menu/`). The field pause menu and the screens it opens: Medawatch, Medabots, Medals,
+Medaparts, items, Town Map, plus name entry. They read and change the inventory.
+The Medabots screen (`src/menu/medabots_screen.c`) rebuilds a team slot with the D-pad: UP / DOWN move between
+the Medal, head, arm and legs rows (`gGameWork.detailRow`), LEFT / RIGHT step that row's preview
+(`gGameWork.shownHead` etc.) through the owned parts that are not all equipped, in part-id order, skipping parts
+of the other gender (`find_next_available_medapart_slot`); after part 119 the cycle shows 120 + the tinpet's gender,
+the bare tinpet with no part (`medabot_detail_prev_part_id`). The team slot in `gTeamSlots` only changes when B
+leaves the screen (seen at runtime); A opens the part's details instead.
+
+**Inventory** (`src/inventory/`). The Medals, Medaparts, items and team the player owns, with the list sorts.
+Used by menus, shops, battle and field scripts. `gMedals` has 30 slots (`struct MedalData`, 0x40 bytes each):
+`flags` holds `MEDAL_FLAG_OWNED` / `MEDAL_FLAG_IN_MEDABOT` (`include/constants/medals.h`) above the slot's place in
+the list order, and `graphicId` is the Medal's id. `medal_add_by_id` fills the first unowned slot.
+
+**Text** (`src/text/`). The message window (`message.c`): text printing, glyphs and message commands; the
+yes/no choice menu. Used by nearly every screen. Message bytes below 0xF7 are font characters; 0xF7-0xFF are
+control codes (`TEXT_CODE_*` in `include/constants/text.h`: waits, alternate font, string variables, speaker
+portrait, page / line breaks, end of message). 0xFE (`TEXT_EOS`) also ends names. A wait of 0xFF
+(`TEXT_WAIT_INSTANT`) skips the wait and prints the rest of the message at once.
+
+**Title** (`src/title/`). The mode-2 dispatcher and title menu, the new-game prompt, TEST MODE, the screen
+after a lost Robattle, and the mode-3 boot logos, intro and title screen.
+
+**Save** (`src/save/`). The save screen, EEPROM load / write / checks and the "saved data has been lost"
+screen.
+
+**Shop** (`src/shop/`). The Medaparts shop (Buy / Sell, lists and cart) and the Medal shop (guess), entered
+from field scripts. Selling (observed in the Medamall): pick a part type, Right on a row adds one to the cart,
+A -> "Are you all set?" -> Yes credits the total. Money (`gPlayerRecord.money`) is in cents. Winning a
+Robattle pays nothing, so selling parts and the money that map scripts give (opcode `map_script_update_give_money`)
+are the only income; gift items such as the Medamall's Telephoto Lens are map-script purchases
+(`map_script_update_take_money`, "Used $20.00"), not this screen.
+
+**Cutscenes** (`src/cutscene/`). The scrolling-text scene, the event picture with a message and Medabots
+Weekly, the in-game TV show: curtains open on a studio, four characters walk on and talk, the "Medabots
+Lecture" corner assembles a Medabot part by part, and the curtains close again. Its sub-states are a linear
+script; sprite moves are small effect functions (`gWeeklySpriteEffects`) and the lecture's build steps are
+`gWeeklyLectureSteps`.
+
+**Minigames** (`src/minigame/`). The race and the bomb game, both mode-3 states.
+
+**Debug** (`src/debug/`). The developer debug menu (mode 0 state 63) and its entries.
+
+**Audio** (`src/audio/`). The game's own sound engine (not m4a): the sequencer (`sound_seq.c`) reads the song
+byte streams and runs envelopes and vibrato; the driver (`sound_driver.c`) ticks once a frame from the VBlank
+handler and writes the PSG and Direct Sound channels. Screens call `play_song` and `play_sound_effect`.
+The work area (`struct SoundWork`, `gSoundWork`) holds 13 tracks (`struct SoundTrack`): 0-3 music on PSG
+channels 1-4, 4-7 sound effects on the same channels, 8/9 music and 10/11 sound effects on Direct Sound FIFO A/B,
+12 music drums on the noise channel. A sound effect track takes its channel over and hands it back when it ends
+(`sound_on_*_end`). Each track has a sequence pointer (`seqPos`), a command stream of notes, rests, volumes and
+0xE0-0xFF commands (`sound_cmd_*`: loops, jump/call, envelope, vibrato, pan, echo, note mode), and a per-frame
+`tick`. The two Direct Sound channels (`struct SoundMixChannel`) are refilled from the DMA1/DMA2 interrupts
+(`sound_mix_refill_fifo_a/b`); songs and effects come from `gSongTable` / `gSoundEffectTable`.
