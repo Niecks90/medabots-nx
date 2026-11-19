@@ -1,0 +1,50 @@
+diff --git a/tools/gba_recompile/main.cpp b/tools/gba_recompile/main.cpp
+index e5c9d48..d159a07 100644
+--- a/tools/gba_recompile/main.cpp
++++ b/tools/gba_recompile/main.cpp
+@@ -371,6 +371,7 @@ struct OutputNames {
+     std::string table_symbol;
+     std::string table_len_symbol;
+     std::string description;
++    std::string prefix;
+ };
+ 
+ OutputNames names_for_mode(bool bios_mode, const std::string& prefix) {
+@@ -382,6 +383,7 @@ OutputNames names_for_mode(bool bios_mode, const std::string& prefix) {
+             prefix + "kBiosDispatchTable",
+             prefix + "kBiosDispatchTableLen",
+             "recompiled GBA BIOS",
++            prefix,
+         };
+     }
+     return {
+@@ -391,6 +393,7 @@ OutputNames names_for_mode(bool bios_mode, const std::string& prefix) {
+         prefix + "kDispatchTable",
+         prefix + "kDispatchTableLen",
+         "recompiled cart code",
++        prefix,
+     };
+ }
+ 
+@@ -640,10 +643,17 @@ void write_dispatch_table(const std::string& dir,
+             std::fprintf(f, "{0x%llXull, %uu, %uu},\n",
+                          static_cast<unsigned long long>(e.key), e.index, e.offset);
+         std::fprintf(f,
+-            "};\nstruct RegisterNativeRam { RegisterNativeRam() {\n"
+-            "runtime_register_native_ram_templates(ram_templates, %zuu, "
+-            "ram_entries, %zuu);\n} } register_native_ram;\n} // namespace\n",
+-            ram_templates.size(), ram_entries.size());
++            "};\n"
++            "} // namespace\n"
++            "extern \"C\" void %sregister_native_ram(void) {\n"
++            "    runtime_register_native_ram_templates(ram_templates, %zuu, ram_entries, %zuu);\n"
++            "}\n"
++            "namespace {\n"
++            "struct RegisterNativeRam { RegisterNativeRam() {\n"
++            "    %sregister_native_ram();\n"
++            "} } s_%sregister_native_ram;\n} // namespace\n",
++            names.prefix.c_str(), ram_templates.size(), ram_entries.size(),
++            names.prefix.c_str(), names.prefix.c_str());
+     }
+     std::fclose(f);
+     commit_generated_file(temp, path);

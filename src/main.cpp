@@ -35,9 +35,30 @@ void log_boot(const char* fmt, ...) {
     fflush(stdout);
 }
 
-extern "C" const uint32_t kDispatchTableLen;
+// Dispatch table and native RAM declarations
+extern "C" struct DispatchEntry { uint32_t addr; uint8_t thumb; uint8_t resume; void (*fn)(void); };
+extern "C" const DispatchEntry kDispatchTable[];
+extern "C" const unsigned kDispatchTableLen;
+extern "C" void register_native_ram(void);
+
+extern "C" const DispatchEntry metabee_kDispatchTable[];
+extern "C" const unsigned metabee_kDispatchTableLen;
+extern "C" void metabee_register_native_ram(void);
+
+extern "C" void runtime_set_cart_dispatch_table(const void* table, unsigned len);
+
 extern "C" bool g_config_audio = true;
 bool g_config_show_fps = false;
+
+enum GameVersion {
+    GAME_UNKNOWN = 0,
+    GAME_ROKUSHO,
+    GAME_METABEE
+};
+
+constexpr const char* kRokushoSha1   = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
+constexpr const char* kMetabeeSha1   = "cd3d674e88f40a0707b150c4293588a659001d29";
+constexpr const char* kMetabeeUsaSha1 = "fee2d1db994e1a13fc2bc9943198136192412185";
 
 struct GameThreadArgs {
     int argc;
@@ -81,37 +102,12 @@ int main(int argc, char** argv) {
     mkdir("sdmc:/switch/medabots_nx/save", 0777);
     chdir("sdmc:/switch/medabots_nx");
 
-    // Migrate any stray save files to sdmc:/switch/medabots_nx/save/rom.sav
-    {
-        FILE* cur_sav = fopen("sdmc:/switch/medabots_nx/save/rom.sav", "rb");
-        if (cur_sav) {
-            fclose(cur_sav);
-        } else {
-            // Check for sdmc:/switch/medabots_nx/rom.sav
-            FILE* src_sav = fopen("sdmc:/switch/medabots_nx/rom.sav", "rb");
-            if (!src_sav) src_sav = fopen("sdmc:/switch/medabots_nx/save/medabots_rokusho.sav", "rb");
-            if (src_sav) {
-                FILE* dst_sav = fopen("sdmc:/switch/medabots_nx/save/rom.sav", "wb");
-                if (dst_sav) {
-                    char chunk[4096];
-                    size_t n;
-                    while ((n = fread(chunk, 1, sizeof(chunk), src_sav)) > 0) {
-                        fwrite(chunk, 1, n, dst_sav);
-                    }
-                    fclose(dst_sav);
-                }
-                fclose(src_sav);
-                unlink("sdmc:/switch/medabots_nx/rom.sav");
-            }
-        }
-    }
-
     freopen("sdmc:/switch/medabots_nx/boot.log", "w", stdout);
     freopen("sdmc:/switch/medabots_nx/boot.log", "a", stderr);
     setvbuf(stdout, nullptr, _IONBF, 0);
     setvbuf(stderr, nullptr, _IONBF, 0);
 
-    std::printf("--- Medabots Rokusho NX Boot Log ---\n");
+    std::printf("--- Medabots NX Boot Log (v0.2.0) ---\n");
     std::fflush(stdout);
 
     setenv("GBARECOMP_BIOS_HLE", "1", 1);
@@ -130,8 +126,6 @@ int main(int argc, char** argv) {
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
-    constexpr const char* kTargetSha1 = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
-
     auto compute_sha1 = [](const std::string& path, size_t* out_size) -> std::string {
         FILE* f = fopen(path.c_str(), "rb");
         if (!f) return {};
@@ -147,59 +141,54 @@ int main(int argc, char** argv) {
         return gba::sha1(buf.data(), buf.size()).hex();
     };
 
+    GameVersion detected_version = GAME_UNKNOWN;
+    std::string detected_sha1;
     static std::string selected_rom_path;
 
-    // 1. Inspect sdmc:/switch/medabots_nx/rom.gba
-    size_t sdmc_sz = 0;
-    std::string sdmc_sha1 = compute_sha1("sdmc:/switch/medabots_nx/rom.gba", &sdmc_sz);
-    if (!sdmc_sha1.empty()) {
-        log_boot("Found sdmc:/switch/medabots_nx/rom.gba: %zu bytes, SHA-1=%s\n", sdmc_sz, sdmc_sha1.c_str());
-        if (sdmc_sha1 == kTargetSha1) {
-            selected_rom_path = "sdmc:/switch/medabots_nx/rom.gba";
-            log_boot("Target retail ROM validated on SDMC.\n");
-        } else {
-            log_boot("NOTICE: sdmc:/switch/medabots_nx/rom.gba does not match clean ROM, checking RomFS...\n");
-        }
-    }
+    const std::vector<std::string> rom_search_paths = {
+        "sdmc:/switch/medabots_nx/rom.gba",
+        "sdmc:/switch/medabots_nx/rokusho.gba",
+        "sdmc:/switch/medabots_nx/metabee.gba",
+        "romfs:/rom.gba",
+        "romfs:/rokusho.gba",
+        "romfs:/metabee.gba"
+    };
 
-    // 2. Fall back to embedded RomFS ROM if SDMC didn't have the clean ROM
-    if (selected_rom_path.empty() && romfs_mounted) {
-        size_t romfs_sz = 0;
-        std::string romfs_sha1 = compute_sha1("romfs:/rom.gba", &romfs_sz);
-        if (!romfs_sha1.empty()) {
-            log_boot("Found romfs:/rom.gba: %zu bytes, SHA-1=%s\n", romfs_sz, romfs_sha1.c_str());
-            if (romfs_sha1 == kTargetSha1) {
-                selected_rom_path = "romfs:/rom.gba";
-                log_boot("Using clean retail ROM from romfs:/rom.gba.\n");
-
-                // Update SDMC with clean ROM from RomFS
-                FILE* src = fopen("romfs:/rom.gba", "rb");
-                FILE* dst = fopen("sdmc:/switch/medabots_nx/rom.gba", "wb");
-                if (src && dst) {
-                    char chunk[65536];
-                    size_t read_bytes;
-                    while ((read_bytes = fread(chunk, 1, sizeof(chunk), src)) > 0) {
-                        fwrite(chunk, 1, read_bytes, dst);
-                    }
-                    log_boot("Updated sdmc:/switch/medabots_nx/rom.gba with clean ROM from RomFS.\n");
-                    selected_rom_path = "sdmc:/switch/medabots_nx/rom.gba";
-                }
-                if (src) fclose(src);
-                if (dst) fclose(dst);
-            }
+    for (const auto& path : rom_search_paths) {
+        size_t sz = 0;
+        std::string h = compute_sha1(path, &sz);
+        if (h.empty()) continue;
+        log_boot("Inspecting %s: %zu bytes, SHA-1=%s\n", path.c_str(), sz, h.c_str());
+        if (h == kRokushoSha1) {
+            detected_version = GAME_ROKUSHO;
+            detected_sha1 = h;
+            selected_rom_path = path;
+            log_boot("Target ROM validated as Medabots: Rokusho Version (USA).\n");
+            break;
+        } else if (h == kMetabeeSha1 || h == kMetabeeUsaSha1) {
+            detected_version = GAME_METABEE;
+            detected_sha1 = h;
+            selected_rom_path = path;
+            log_boot("Target ROM validated as Medabots: Metabee Version (%s).\n", (h == kMetabeeSha1 ? "EUR" : "USA"));
+            break;
         }
     }
 
     if (selected_rom_path.empty()) {
-        log_boot("FATAL: No clean Medabots ROM found!\n");
+        log_boot("FATAL: No clean Medabots (Rokusho or Metabee) ROM found!\n");
         consoleInit(NULL);
         printf("\x1b[1;31m====================================================\x1b[0m\n");
-        printf("\x1b[1;37m        Medabots: Rokusho NX - Boot Error           \x1b[0m\n");
+        printf("\x1b[1;37m             Medabots NX - Boot Error               \x1b[0m\n");
         printf("\x1b[1;31m====================================================\x1b[0m\n\n");
-        printf("ROM SHA-1 mismatch or file missing!\n\n");
-        printf("Expected: %s\n", kTargetSha1);
-        printf("Size:     8,388,608 bytes (Medabots: Rokusho)\n\n");
-        printf("Please place 'rom.gba' in 'sdmc:/switch/medabots_nx/'.\n\n");
+        printf("ROM file missing or SHA-1 mismatch!\n\n");
+        printf("Supported versions (8,388,608 bytes clean ROM):\n");
+        printf("  - Medabots: Rokusho Version (USA)\n");
+        printf("    SHA-1: %s\n\n", kRokushoSha1);
+        printf("  - Medabots: Metabee Version (EUR / USA)\n");
+        printf("    SHA-1: %s\n\n", kMetabeeSha1);
+        printf("Please place your ROM on SD card:\n");
+        printf("  'sdmc:/switch/medabots_nx/rom.gba'\n");
+        printf("  (or 'rokusho.gba' / 'metabee.gba')\n\n");
         printf("Press PLUS (+) or B to return to Homebrew Menu.\n");
         consoleUpdate(NULL);
 
@@ -229,7 +218,7 @@ int main(int argc, char** argv) {
         log_boot("ERROR: Missing sdmc:/switch/medabots_nx/gba_bios.bin!\n");
         consoleInit(NULL);
         printf("\x1b[1;31m====================================================\x1b[0m\n");
-        printf("\x1b[1;37m        Medabots: Rokusho NX - Boot Error           \x1b[0m\n");
+        printf("\x1b[1;37m             Medabots NX - Boot Error               \x1b[0m\n");
         printf("\x1b[1;31m====================================================\x1b[0m\n\n");
         printf("Missing GBA BIOS file!\n\n");
         printf("Please place 'gba_bios.bin' (16,384 bytes) in:\n");
@@ -252,8 +241,6 @@ int main(int argc, char** argv) {
         consoleExit(NULL);
         return 1;
     }
-
-    log_boot("kDispatchTableLen = %u\n", kDispatchTableLen);
 
     bool config_linear_filter = false;
     bool config_vsync = false;
@@ -311,19 +298,12 @@ int main(int argc, char** argv) {
                 } else if (key == "audio") {
                     if (is_true) g_config_audio = true;
                     else if (is_false) g_config_audio = false;
-                } else if (key == "language" || key == "lang") {
-                    if (val == "fr" || val == "french" || val == "francais" || val == "1") {
-                        setenv("GBARECOMP_LANGUAGE", "1", 1);
-                    } else {
-                        setenv("GBARECOMP_LANGUAGE", "0", 1);
-                    }
                 }
             }
         }
     } else {
         log_boot("Config not found, creating default at sdmc:/switch/medabots_nx/config.txt\n");
         std::ofstream new_config("sdmc:/switch/medabots_nx/config.txt");
-        new_config << "language = en\n";
         new_config << "vsync = 0\n";
         new_config << "uncapped = 0\n";
         new_config << "cpu_boost = 0\n";
@@ -349,19 +329,18 @@ int main(int argc, char** argv) {
         setenv("GBARECOMP_SHOW_FPS", "0", 1);
     }
 
-    log_boot("Config: language=%s, vsync=%d, uncapped=%d, cpu_boost=%d, linear_filter=%d, show_fps=%d\n",
-             std::getenv("GBARECOMP_LANGUAGE") ? std::getenv("GBARECOMP_LANGUAGE") : "0",
+    log_boot("Config: vsync=%d, uncapped=%d, cpu_boost=%d, linear_filter=%d, show_fps=%d\n",
              config_vsync, config_uncapped, config_cpu_boost, config_linear_filter, g_config_show_fps);
 #endif
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--version") == 0) {
-            std::printf("MedabotsRokushoRecomp v%s\n", MEDABOTS_VERSION);
+            std::printf("Medabots NX v%s\n", MEDABOTS_VERSION);
             return 0;
         }
         if (std::strcmp(argv[i], "--help") == 0 ||
             std::strcmp(argv[i], "-h") == 0) {
             std::printf(
-                "MedabotsRokushoRecomp [--bios <path>] [--rom <path>] [game.toml]\n");
+                "Medabots NX [--bios <path>] [--rom <path>] [game.toml]\n");
             return 0;
         }
     }
@@ -369,21 +348,61 @@ int main(int argc, char** argv) {
     gbarecomp::RunOptions opts;
     std::vector<std::string> args(argv, argv + argc);
 
+    static std::string active_save_path;
 #if defined(__SWITCH__)
-    opts.launcher_save_path = "sdmc:/switch/medabots_nx/save/rom.sav";
-#endif
+    if (detected_version == GAME_METABEE) {
+        log_boot("Configuring runtime for Medabots: Metabee Version\n");
+        runtime_set_cart_dispatch_table(metabee_kDispatchTable, metabee_kDispatchTableLen);
+        metabee_register_native_ram();
+        log_boot("Loaded Metabee dispatch table (%u entries)\n", metabee_kDispatchTableLen);
+        opts.builtin_game_name = "Medabots: Metabee";
+        opts.builtin_rom_sha1 = detected_sha1.c_str();
+        opts.builtin_rom_crc32 = 0x50927f3eu;
+        opts.mod_game_id = "medabots-metabee";
+        opts.launcher_region = (detected_sha1 == kMetabeeSha1 ? "EUR" : "USA");
+        active_save_path = "sdmc:/switch/medabots_nx/save/metabee.sav";
+    } else {
+        log_boot("Configuring runtime for Medabots: Rokusho Version\n");
+        runtime_set_cart_dispatch_table(kDispatchTable, kDispatchTableLen);
+        register_native_ram();
+        log_boot("Loaded Rokusho dispatch table (%u entries)\n", kDispatchTableLen);
+        opts.builtin_game_name = "Medabots: Rokusho";
+        opts.builtin_rom_sha1 = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
+        opts.builtin_rom_crc32 = 0xe144ded2u;
+        opts.mod_game_id = "medabots-rokusho";
+        opts.launcher_region = "USA";
+        active_save_path = "sdmc:/switch/medabots_nx/save/rokusho.sav";
 
-#if defined(GBAGAME_NETPLAY) && !defined(__SWITCH__)
-    opts.netplay = gbarecomp::make_gba_netplay_launch("medabots-rokusho", GBARECOMP_NETPLAY_BUILD_ID,
-        "c3c76413274f3d2d573db244ae38909202421d68");
-    try { gbarecomp::parse_gba_netplay_arguments(args, *opts.netplay); }
-    catch (const std::exception& e) { std::fprintf(stderr, "netplay: %s\n", e.what()); return 1; }
-#endif
-
-    opts.builtin_game_name = "Medabots: Rokusho";
-    opts.builtin_rom_sha1 = "c4572428ea97b302f699a3b4eba2a1f0e87c1c9c";
+        // Migrate legacy save/rom.sav to save/rokusho.sav if rokusho.sav does not exist yet
+        FILE* cur_sav = fopen("sdmc:/switch/medabots_nx/save/rokusho.sav", "rb");
+        if (cur_sav) {
+            fclose(cur_sav);
+        } else {
+            FILE* src_sav = fopen("sdmc:/switch/medabots_nx/save/rom.sav", "rb");
+            if (src_sav) {
+                FILE* dst_sav = fopen("sdmc:/switch/medabots_nx/save/rokusho.sav", "wb");
+                if (dst_sav) {
+                    char chunk[4096];
+                    size_t n;
+                    while ((n = fread(chunk, 1, sizeof(chunk), src_sav)) > 0) {
+                        fwrite(chunk, 1, n, dst_sav);
+                    }
+                    fclose(dst_sav);
+                    log_boot("Migrated legacy save/rom.sav to save/rokusho.sav\n");
+                }
+                fclose(src_sav);
+            }
+        }
+    }
+    opts.launcher_save_path = active_save_path.c_str();
+#else
+    opts.builtin_game_name = "Medabots";
+    opts.builtin_rom_sha1 = kRokushoSha1;
     opts.builtin_rom_crc32 = 0xe144ded2u;
-    opts.mod_game_id = "medabots-rokusho";
+    opts.mod_game_id = "medabots";
+    opts.launcher_save_path = "saves/rom.sav";
+#endif
+
     opts.mod_owns_adaptive_view = false;
 
     // Clean native 4:3 (240x160) presentation
@@ -404,11 +423,9 @@ int main(int argc, char** argv) {
     opts.launcher_default_sharp_filter = true;
     opts.launcher_expose_affine_filter = false;
     opts.launcher_default_affine_filter = false;
-    opts.launcher_region = "USA";
 
 #if !defined(__SWITCH__)
     opts.launcher_game_config = "game.toml";
-    opts.launcher_save_path = "saves/medabots_rokusho.sav";
 #endif
 
 #if defined(GBAGAME_RECOMP_UI) && !defined(__SWITCH__)
@@ -425,7 +442,8 @@ int main(int argc, char** argv) {
     static char arg_rom_path[256];
     std::snprintf(arg_rom_path, sizeof(arg_rom_path), "%s", selected_rom_path.c_str());
     static char arg_save_flag[]   = "--save";
-    static char arg_save_path[]   = "sdmc:/switch/medabots_nx/save/rom.sav";
+    static char arg_save_path[256];
+    std::snprintf(arg_save_path, sizeof(arg_save_path), "%s", active_save_path.c_str());
     static char arg_linear_flag[] = "--linear-filter";
     static char arg_uncapped_flag[] = "--uncapped";
     static char arg_hle[]         = "--bios-hle";

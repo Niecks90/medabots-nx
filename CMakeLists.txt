@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(MedabotsRokushoRecomp VERSION 0.1.0 LANGUAGES C CXX)
+project(MedabotsRokushoRecomp VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
@@ -74,6 +74,16 @@ configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/gbarecomp/src/runtime/host_window.h"
     COPYONLY
 )
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/switch/runtime_arm.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/gbarecomp/src/armv4t/runtime_arm.cpp"
+    COPYONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/switch/runtime_arm.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/gbarecomp/src/armv4t/runtime_arm.h"
+    COPYONLY
+)
 
 set(GBARECOMP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/gbarecomp" CACHE PATH "Path to gbarecomp")
 
@@ -126,7 +136,7 @@ target_include_directories(MedabotsRokushoRecomp PRIVATE "${CMAKE_CURRENT_SOURCE
 # dispatch table and symbol map remain ordinary small generated units.
 set(GAME_RECOMPILED_SOURCES ${GAME_GENERATED_SOURCES})
 list(FILTER GAME_RECOMPILED_SOURCES INCLUDE REGEX
-    "/recompiled_[0-9]+\\.cpp$")
+    "recompiled_[0-9]+\\.cpp$")
 set(MEDABOTS_GENERATED_OPTIMIZATION "O2" CACHE STRING "Generated CPU optimization: O1 or O2")
 set_property(CACHE MEDABOTS_GENERATED_OPTIMIZATION PROPERTY STRINGS O1 O2)
 if(NOT MEDABOTS_GENERATED_OPTIMIZATION MATCHES "^(O1|O2)$")
@@ -197,7 +207,7 @@ if(NINTENDO_SWITCH OR __SWITCH__ OR SWITCH)
     endif()
 
     add_custom_command(TARGET MedabotsRokushoRecomp POST_BUILD
-        COMMAND nacptool --create "Medabots: Rokusho" "Niecks90" "0.1.0" $<TARGET_FILE_DIR:MedabotsRokushoRecomp>/medabots_nx.nacp
+        COMMAND nacptool --create "Medabots NX" "Niecks90" "0.2.0" $<TARGET_FILE_DIR:MedabotsRokushoRecomp>/medabots_nx.nacp
         COMMAND elf2nro $<TARGET_FILE:MedabotsRokushoRecomp> $<TARGET_FILE_DIR:MedabotsRokushoRecomp>/medabots_nx.nro --nacp=$<TARGET_FILE_DIR:MedabotsRokushoRecomp>/medabots_nx.nacp --icon=${CMAKE_CURRENT_SOURCE_DIR}/switch/icon.png --romfsdir=${MEDABOTS_ROMFS_DIR}
         COMMENT "Generating medabots_nx.nro"
     )
